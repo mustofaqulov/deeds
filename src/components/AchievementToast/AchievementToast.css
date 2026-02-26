@@ -1,0 +1,100 @@
+/* ===================================================
+   ACHIEVEMENT TOAST — Top-right notification
+   =================================================== */
+
+.ach-toast {
+  position: fixed;
+  top: 92px;
+  right: 24px;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  width: min(340px, calc(100vw - 48px));
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.04);
+  overflow: hidden;
+  transform: translateX(calc(100% + 32px));
+  opacity: 0;
+  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.28s ease;
+}
+
+.ach-toast--show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.ach-toast--hide {
+  transform: translateX(calc(100% + 32px));
+  opacity: 0;
+}
+
+.ach-toast-glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(223, 190, 75, 0.06), transparent 60%);
+  pointer-events: none;
+}
+
+.ach-toast-icon {
+  font-size: 34px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px var(--accent-soft));
+}
+
+.ach-toast-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ach-toast-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 3px;
+}
+
+.ach-toast-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ach-toast-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ach-toast-xp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 20px;
+  font-weight: 900;
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  flex-shrink: 0;
+}
+
+.ach-toast-xp span {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.8;
+}

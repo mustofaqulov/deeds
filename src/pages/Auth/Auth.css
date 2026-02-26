@@ -1,0 +1,192 @@
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  background: var(--grad-bg);
+  background-attachment: fixed;
+}
+
+.auth-bg-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.auth-moon {
+  position: absolute;
+  top: 10%;
+  right: 10%;
+  font-size: 80px;
+  opacity: 0.12;
+  animation: moonGlow 4s ease-in-out infinite;
+}
+
+.auth-star {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--primary);
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: twinkle calc(2s + calc(var(--i) * 0.5s)) ease-in-out infinite;
+  top: calc(10% + calc(var(--i) * 10%));
+  left: calc(5% + calc(var(--i) * 12%));
+}
+
+.auth-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border-bright);
+  border-radius: 28px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 16px 56px rgba(13, 91, 74, 0.16), 0 4px 16px rgba(0,0,0,0.08);
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+.auth-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: var(--grad-gold);
+  border-radius: 28px 28px 0 0;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.auth-header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+.auth-header p {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.auth-error {
+  background: rgba(217, 70, 95, 0.08);
+  border: 1px solid rgba(217, 70, 95, 0.25);
+  color: var(--danger);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.checkbox-label input { accent-color: var(--primary); }
+
+.forgot-link {
+  font-size: 13px;
+  color: var(--primary);
+}
+.forgot-link:hover { text-decoration: underline; }
+
+.auth-submit {
+  width: 100%;
+  justify-content: center;
+  padding: 13px;
+  font-size: 16px;
+  margin-top: 4px;
+}
+.auth-submit:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.auth-footer {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.auth-footer a { color: var(--primary); font-weight: 600; }
+.auth-footer a:hover { text-decoration: underline; }
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+/* Welcome screen */
+.welcome-card {
+  text-align: center;
+  padding: 60px 36px;
+}
+.welcome-moon {
+  font-size: 72px;
+  display: block;
+  margin-bottom: 20px;
+  animation: moonGlow 2s ease-in-out infinite, pulse 2s ease-in-out infinite;
+}
+.welcome-card h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.welcome-card p {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+.welcome-sub {
+  margin-top: 20px;
+  color: var(--primary) !important;
+  font-weight: 600;
+}
+
+select.input-field {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23C9A84C' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+
+@media (max-width: 480px) {
+  .auth-card { padding: 28px 20px; border-radius: 20px; }
+}

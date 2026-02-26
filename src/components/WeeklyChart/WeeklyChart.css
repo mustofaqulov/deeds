@@ -1,0 +1,63 @@
+.wchart-wrap {
+  padding: 8px 4px 0;
+}
+.wchart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100px;
+}
+.wchart-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+.wchart-bar-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+}
+.wchart-xp-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
+.wchart-bar-bg {
+  width: 100%;
+  background: var(--border);
+  border-radius: 6px;
+  height: 80%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+.wchart-bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, var(--accent-light), var(--primary));
+  border-radius: 6px;
+  transition: height 0.8s ease;
+  min-height: 0;
+}
+.wchart-bar-fill.today {
+  background: linear-gradient(180deg, var(--accent-light), var(--accent));
+  box-shadow: 0 0 8px var(--accent-soft);
+}
+.wchart-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.wchart-label.today {
+  color: var(--primary);
+  font-weight: 700;
+}

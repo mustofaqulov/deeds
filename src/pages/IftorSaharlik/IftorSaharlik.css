@@ -1,0 +1,377 @@
+.iftor-page {
+  display: grid;
+  gap: 18px;
+}
+
+.iftor-hero {
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+}
+
+.iftor-hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.iftor-city-select {
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+}
+
+.iftor-city-select.fixed {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  padding: 10px 12px;
+}
+
+.iftor-city-select span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.iftor-city-select.fixed strong {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.iftor-hero-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.iftor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 14px;
+  align-items: start;
+}
+
+.iftor-main {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.iftor-time-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.iftor-time-chip {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  border-radius: var(--radius-lg);
+  padding: 11px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.iftor-chip-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  background: rgba(13, 91, 74, 0.12);
+  flex-shrink: 0;
+}
+
+.iftor-chip-body {
+  display: grid;
+  gap: 2px;
+}
+
+.iftor-chip-body small {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.iftor-chip-body strong {
+  font-size: 23px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.iftor-time-chip.active {
+  border-color: rgba(223, 190, 75, 0.55);
+  background: linear-gradient(160deg, rgba(223, 190, 75, 0.2), rgba(13, 91, 74, 0.08));
+}
+
+.iftor-count-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 14% 16%, rgba(13, 91, 74, 0.18), transparent 45%),
+    radial-gradient(circle at 90% 90%, rgba(223, 190, 75, 0.2), transparent 40%),
+    linear-gradient(165deg, var(--surface) 0%, var(--surface-soft) 100%);
+}
+
+.iftor-count-wrap h2 {
+  margin-top: 8px;
+  font-size: clamp(34px, 6vw, 52px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.iftor-count-kicker {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.iftor-count-wrap small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.iftor-countdown {
+  margin: 14px 0 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.iftor-count-item {
+  min-width: 78px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.76);
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+}
+
+.iftor-count-item strong {
+  font-size: 29px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.iftor-count-item span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.iftor-count-sep {
+  font-size: 26px;
+  color: var(--primary);
+  font-weight: 800;
+  padding-bottom: 10px;
+}
+
+.iftor-main-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.iftor-info {
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.iftor-info.success {
+  background: rgba(31, 157, 99, 0.12);
+  border: 1px solid rgba(31, 157, 99, 0.3);
+  color: #136847;
+}
+
+.iftor-info.warning {
+  background: rgba(245, 174, 44, 0.14);
+  border: 1px solid rgba(245, 174, 44, 0.34);
+  color: #7a4d00;
+}
+
+.iftor-side {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.iftor-side h3 {
+  font-size: 16px;
+}
+
+.iftor-side ul {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.iftor-side li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 10px;
+}
+
+.iftor-side li span {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.iftor-side li strong {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.iftor-dua-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.iftor-dua {
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.iftor-dua.saharlik {
+  border-color: rgba(45, 159, 215, 0.28);
+}
+
+.iftor-dua.iftor {
+  border-color: rgba(223, 190, 75, 0.35);
+}
+
+.iftor-dua-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.iftor-dua-head h3 {
+  font-size: 17px;
+}
+
+.iftor-dua-arabic {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--surface-soft);
+  font-size: 25px;
+  line-height: 2.05;
+}
+
+.iftor-dua-uz {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.iftor-dua-translit-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.iftor-dua-translit {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  padding: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+@media (max-width: 1060px) {
+  .iftor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .iftor-side {
+    order: -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .iftor-dua-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .iftor-time-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .iftor-main,
+  .iftor-hero {
+    padding: 16px;
+  }
+
+  .iftor-count-item {
+    min-width: 62px;
+  }
+
+  .iftor-count-item strong {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .iftor-main-actions {
+    flex-direction: column;
+  }
+
+  .iftor-main-actions .btn {
+    width: 100%;
+  }
+
+  .iftor-countdown {
+    gap: 5px;
+  }
+
+  .iftor-count-sep {
+    font-size: 20px;
+  }
+
+  .iftor-count-item {
+    min-width: 56px;
+    padding: 8px 6px;
+  }
+}
