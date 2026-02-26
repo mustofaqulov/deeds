@@ -27,7 +27,7 @@ export default function Profile() {
     profilePhotoId: user?.profilePhotoId || '',
   });
 
-  const { current } = getLevelInfo(user?.xp || 0);
+  const { current, progress: levelProgress } = getLevelInfo(user?.xp || 0);
   const totalCompleted = Object.values(user?.completedDays || {}).flat().length;
   const earnedSet = new Set(user?.achievements || []);
   const earnedCount = ACHIEVEMENTS.filter((item) => earnedSet.has(item.id)).length;
@@ -97,7 +97,7 @@ export default function Profile() {
   };
 
   return (
-    <div className="page-wrapper">
+    <div className="page-wrapper profile-page">
       <div className="profile-hero card fade-in-up">
         <ProgressRing percent={user?.heartPercent || 0} size={84} stroke={6}>
           <div className="profile-avatar">
@@ -158,120 +158,150 @@ export default function Profile() {
             <h2 className="profile-name">{user?.name}</h2>
             <p className="profile-email">{user?.email}</p>
             <div className="profile-meta">
-              <span className="badge badge-gold">📍 {user?.city}</span>
+              <span className="badge badge-gold">{user?.city}</span>
               <span className="badge badge-accent">Daraja {current.level} - {current.name}</span>
+              <span className="badge badge-success">Level progress: {Math.round(levelProgress)}%</span>
             </div>
             <button className="btn btn-outline profile-edit-btn" onClick={openEditor}>
               <IconEdit size={14} /> Tahrirlash
             </button>
           </div>
         )}
+
+        {!editing && (
+          <div className="profile-hero-side">
+            <div className="profile-mini-stat">
+              <span className="profile-mini-label">XP</span>
+              <strong className="profile-mini-value">{user?.xp || 0}</strong>
+            </div>
+            <div className="profile-mini-stat">
+              <span className="profile-mini-label">Streak</span>
+              <strong className="profile-mini-value">{user?.streak || 0}</strong>
+            </div>
+            <div className="profile-mini-stat">
+              <span className="profile-mini-label">Yutuq</span>
+              <strong className="profile-mini-value">{earnedCount}</strong>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="fade-in-up" style={{ animationDelay: '0.1s' }}>
-        <XPBar xp={user?.xp || 0} streak={user?.streak || 0} />
-      </div>
+      <div className="profile-layout">
+        <section className="profile-main-col">
+          <div className="fade-in-up profile-xp-wrap" style={{ animationDelay: '0.1s' }}>
+            <XPBar xp={user?.xp || 0} streak={user?.streak || 0} />
+          </div>
 
-      <div className="profile-stats-grid fade-in-up" style={{ animationDelay: '0.15s' }}>
-        <div className="profile-stat card">
-          <span className="pstat-icon"><IconHeart size={24} /></span>
-          <span className="pstat-val">{Math.round(user?.heartPercent || 0)}%</span>
-          <span className="pstat-label">Qalb nuri</span>
-        </div>
-        <div className="profile-stat card">
-          <span className="pstat-icon"><IconFire size={24} /></span>
-          <span className="pstat-val">{user?.streak || 0}</span>
-          <span className="pstat-label">Joriy streak</span>
-        </div>
-        <div className="profile-stat card">
-          <span className="pstat-icon"><IconStar size={24} /></span>
-          <span className="pstat-val">{user?.longestStreak || 0}</span>
-          <span className="pstat-label">Eng uzun streak</span>
-        </div>
-        <div className="profile-stat card">
-          <span className="pstat-icon">🧊</span>
-          <span className="pstat-val">{user?.streakFreezes || 0}</span>
-          <span className="pstat-label">Freeze</span>
-        </div>
-        <div className="profile-stat card">
-          <span className="pstat-icon"><IconCheckCircle size={24} /></span>
-          <span className="pstat-val">{totalCompleted}</span>
-          <span className="pstat-label">Jami bajarildi</span>
-        </div>
-      </div>
-
-      <div className="fade-in-up" style={{ animationDelay: '0.2s' }}>
-        <div className="section-title-row" style={{ marginBottom: 16 }}>
-          <span className="section-icon"><IconStar size={20} /></span>
-          Yutuqlar ({earnedCount}/{ACHIEVEMENTS.length})
-        </div>
-        <div className="badges-grid">
-          {ACHIEVEMENTS.map((item) => {
-            const earned = earnedSet.has(item.id);
-            return (
-              <div key={item.id} className={`badge-card card ${earned ? 'earned' : 'locked'}`}>
-                <span className="badge-icon">{item.icon}</span>
-                <div className="badge-name">{item.label}</div>
-                <div className="badge-desc">{item.desc}</div>
-                <div className="badge-xp">+{item.xpBonus} XP</div>
-                {!earned && <div className="badge-lock">🔒</div>}
+          <div className="profile-stats-wrap card fade-in-up" style={{ animationDelay: '0.15s' }}>
+            <div className="profile-section-title">
+              <IconHeart size={18} />
+              Umumiy ko'rsatkichlar
+            </div>
+            <div className="profile-stats-grid">
+              <div className="profile-stat card">
+                <span className="pstat-icon"><IconHeart size={24} /></span>
+                <span className="pstat-val">{Math.round(user?.heartPercent || 0)}%</span>
+                <span className="pstat-label">Qalb nuri</span>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="fade-in-up profile-settings card" style={{ animationDelay: '0.25s' }}>
-        <div className="section-title-row" style={{ marginBottom: 14 }}>
-          <span className="section-icon"><IconSettings size={20} /></span>
-          Sozlamalar
-        </div>
-
-        <div className="setting-row" onClick={toggle}>
-          <span className="setting-label-wrap">
-            {dark ? <IconSun size={18} /> : <IconMoon size={18} />}
-            {dark ? 'Kunduzgi rejim' : 'Tungi rejim'}
-          </span>
-          <div className={`toggle-switch ${dark ? 'on' : ''}`}>
-            <div className="toggle-knob" />
+              <div className="profile-stat card">
+                <span className="pstat-icon"><IconFire size={24} /></span>
+                <span className="pstat-val">{user?.streak || 0}</span>
+                <span className="pstat-label">Joriy streak</span>
+              </div>
+              <div className="profile-stat card">
+                <span className="pstat-icon"><IconStar size={24} /></span>
+                <span className="pstat-val">{user?.longestStreak || 0}</span>
+                <span className="pstat-label">Eng uzun streak</span>
+              </div>
+              <div className="profile-stat card">
+                <span className="pstat-icon">🧊</span>
+                <span className="pstat-val">{user?.streakFreezes || 0}</span>
+                <span className="pstat-label">Freeze</span>
+              </div>
+              <div className="profile-stat card">
+                <span className="pstat-icon"><IconCheckCircle size={24} /></span>
+                <span className="pstat-val">{totalCompleted}</span>
+                <span className="pstat-label">Jami bajarildi</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div className="setting-row" onClick={setAuto}>
-          <span className="setting-label-wrap">
-            <IconRefresh size={18} />
-            Avtomatik tema {mode === 'auto' ? '(faol)' : ''}
-          </span>
-          <div className={`toggle-switch ${mode === 'auto' ? 'on' : ''}`}>
-            <div className="toggle-knob" />
+          <div className="profile-badges-wrap card fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className="profile-section-title">
+              <IconStar size={18} />
+              Yutuqlar ({earnedCount}/{ACHIEVEMENTS.length})
+            </div>
+            <div className="badges-grid">
+              {ACHIEVEMENTS.map((item) => {
+                const earned = earnedSet.has(item.id);
+                return (
+                  <div key={item.id} className={`badge-card card ${earned ? 'earned' : 'locked'}`}>
+                    <span className="badge-icon">{item.icon}</span>
+                    <div className="badge-name">{item.label}</div>
+                    <div className="badge-desc">{item.desc}</div>
+                    <div className="badge-xp">+{item.xpBonus} XP</div>
+                    {!earned && <div className="badge-lock">🔒</div>}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div className="setting-row" onClick={() => updateUser({ soundEnabled: !(user?.soundEnabled !== false) })}>
-          <span className="setting-label-wrap">
-            {user?.soundEnabled !== false ? <IconVolumeOn size={18} /> : <IconVolumeOff size={18} />}
-            Ovoz effektlari
-          </span>
-          <div className={`toggle-switch ${user?.soundEnabled !== false ? 'on' : ''}`}>
-            <div className="toggle-knob" />
+        <aside className="profile-side-col">
+          <div className="fade-in-up profile-settings card" style={{ animationDelay: '0.25s' }}>
+            <div className="profile-section-title">
+              <IconSettings size={18} />
+              Sozlamalar
+            </div>
+
+            <div className="setting-row" onClick={toggle}>
+              <span className="setting-label-wrap">
+                {dark ? <IconSun size={18} /> : <IconMoon size={18} />}
+                {dark ? 'Kunduzgi rejim' : 'Tungi rejim'}
+              </span>
+              <div className={`toggle-switch ${dark ? 'on' : ''}`}>
+                <div className="toggle-knob" />
+              </div>
+            </div>
+
+            <div className="setting-row" onClick={setAuto}>
+              <span className="setting-label-wrap">
+                <IconRefresh size={18} />
+                Avtomatik tema {mode === 'auto' ? '(faol)' : ''}
+              </span>
+              <div className={`toggle-switch ${mode === 'auto' ? 'on' : ''}`}>
+                <div className="toggle-knob" />
+              </div>
+            </div>
+
+            <div className="setting-row" onClick={() => updateUser({ soundEnabled: !(user?.soundEnabled !== false) })}>
+              <span className="setting-label-wrap">
+                {user?.soundEnabled !== false ? <IconVolumeOn size={18} /> : <IconVolumeOff size={18} />}
+                Ovoz effektlari
+              </span>
+              <div className={`toggle-switch ${user?.soundEnabled !== false ? 'on' : ''}`}>
+                <div className="toggle-knob" />
+              </div>
+            </div>
+
+            <div className="setting-row setting-reset" onClick={handleResetProgress}>
+              <span className="setting-label-wrap">
+                <IconRefresh size={18} />
+                Progressni 0 qilish
+              </span>
+              <span className="setting-arrow">›</span>
+            </div>
+
+            <div className="setting-row setting-logout" onClick={handleLogout}>
+              <span className="setting-label-wrap">
+                <IconLogout size={18} />
+                Chiqish
+              </span>
+              <span className="setting-arrow">›</span>
+            </div>
           </div>
-        </div>
-
-        <div className="setting-row setting-reset" onClick={handleResetProgress}>
-          <span className="setting-label-wrap">
-            <IconRefresh size={18} />
-            Progressni 0 qilish
-          </span>
-          <span className="setting-arrow">›</span>
-        </div>
-
-        <div className="setting-row setting-logout" onClick={handleLogout}>
-          <span className="setting-label-wrap">
-            <IconLogout size={18} />
-            Chiqish
-          </span>
-          <span className="setting-arrow">›</span>
-        </div>
+        </aside>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { apiSaveNafsStage } from '../../lib/api';
 import {
@@ -21,8 +21,8 @@ import {
 } from '../../utils/nafsResources';
 import './NafsJourney.css';
 
-const TRACKER_TARGET_DAYS = 7;
-const TRACKER_REQUIRED_DAYS = 3;
+const STAGE_DAYS_REQUIRED = 30;
+const STAGE_FREEZE_CREDITS = 1;
 const NOTE_MIN_CHARS = 40;
 const RECENT_DAYS = 7;
 const WEEKLY_REVIEW_XP = 35;
@@ -148,6 +148,7 @@ const JOURNEY_DEFAULTS = {
   selfAssessedStageId: null,
   selfAssessedAt:      null,
   completedStages: [],
+  stageDailyProgress: {},
   stageTasks: {},
   stageTracker: {},
   stageNotes: {},
@@ -171,6 +172,95 @@ const formatSeconds = (seconds) => {
   const secs = String(safe % 60).padStart(2, '0');
   return `${mins}:${secs}`;
 };
+const clampStageDay = (value) => Math.min(STAGE_DAYS_REQUIRED, Math.max(1, Number(value) || 1));
+
+function normalizeStageDailyProgress(stage, rawStageProgress, legacyJourney) {
+  const stageKey = String(stage.id);
+  const raw = safeObject(rawStageProgress);
+  const rawDayData = safeObject(raw.dayData);
+  const legacyTracked = safeArray(legacyJourney.stageTracker?.[stageKey]);
+  const legacyTaskIds = safeArray(legacyJourney.stageTasks?.[stageKey]).filter((taskId) => (
+    stage.practices.some((item) => item.id === taskId)
+  ));
+  const legacyNote = String(legacyJourney.stageNotes?.[stageKey] || '').trim();
+  const legacyCompleted = safeArray(legacyJourney.completedStages).includes(stage.id);
+
+  const completedDaySet = new Set(
+    safeArray(raw.completedDays)
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= STAGE_DAYS_REQUIRED),
+  );
+
+  if (legacyCompleted) {
+    for (let day = 1; day <= STAGE_DAYS_REQUIRED; day += 1) completedDaySet.add(day);
+  } else if (completedDaySet.size === 0 && legacyTracked.length > 0) {
+    const migratedCount = Math.min(STAGE_DAYS_REQUIRED, legacyTracked.length);
+    for (let day = 1; day <= migratedCount; day += 1) completedDaySet.add(day);
+  }
+
+  const completedDays = [...completedDaySet].sort((a, b) => a - b);
+
+  let currentDay = clampStageDay(raw.currentDay);
+  if (!Number.isFinite(Number(raw.currentDay))) {
+    currentDay = clampStageDay(completedDays.length + 1);
+  }
+  if (completedDays.length >= STAGE_DAYS_REQUIRED) currentDay = STAGE_DAYS_REQUIRED;
+
+  if (completedDaySet.has(currentDay) && completedDays.length < STAGE_DAYS_REQUIRED) {
+    for (let day = 1; day <= STAGE_DAYS_REQUIRED; day += 1) {
+      if (!completedDaySet.has(day)) {
+        currentDay = day;
+        break;
+      }
+    }
+  }
+
+  const dayData = {};
+  for (let day = 1; day <= STAGE_DAYS_REQUIRED; day += 1) {
+    const dayKey = String(day);
+    const rawDay = safeObject(rawDayData[dayKey]);
+    const isCompleted = completedDaySet.has(day);
+    const taskIds = safeArray(rawDay.taskIds).filter((taskId) => (
+      stage.practices.some((item) => item.id === taskId)
+    ));
+
+    dayData[dayKey] = {
+      taskIds: taskIds.length > 0
+        ? taskIds
+        : (isCompleted ? stage.practices.map((item) => item.id) : []),
+      practiced: Boolean(rawDay.practiced || isCompleted),
+      note: typeof rawDay.note === 'string' ? rawDay.note : '',
+      dateKey: rawDay.dateKey || (isCompleted ? legacyTracked[day - 1] || null : null),
+      completedAt: rawDay.completedAt || null,
+      completed: isCompleted,
+      frozen: Boolean(rawDay.frozen),
+    };
+  }
+
+  const currentDayKey = String(currentDay);
+  if (!dayData[currentDayKey].taskIds.length && legacyTaskIds.length > 0) {
+    dayData[currentDayKey].taskIds = legacyTaskIds;
+  }
+  if (!dayData[currentDayKey].note && legacyNote) {
+    dayData[currentDayKey].note = legacyNote;
+  }
+
+  const freezeCredits = Number.isFinite(Number(raw.freezeCredits))
+    ? Math.max(0, Number(raw.freezeCredits))
+    : STAGE_FREEZE_CREDITS;
+  const freezeUsedDays = safeArray(raw.freezeUsedDays)
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= STAGE_DAYS_REQUIRED);
+
+  return {
+    currentDay,
+    completedDays,
+    dayData,
+    freezeCredits,
+    freezeUsedDays,
+    lastAdvancedDateKey: raw.lastAdvancedDateKey || null,
+  };
+}
 
 function getRecentDays(count = RECENT_DAYS) {
   const days = [];
@@ -208,12 +298,37 @@ function hasReviewAnswers(review) {
 
 function normalizeJourney(rawJourney) {
   const raw = safeObject(rawJourney);
+  const legacyJourney = {
+    completedStages: safeArray(raw.completedStages),
+    stageTasks: safeObject(raw.stageTasks),
+    stageTracker: safeObject(raw.stageTracker),
+    stageNotes: safeObject(raw.stageNotes),
+  };
+  const rawStageDailyProgress = safeObject(raw.stageDailyProgress);
+  const stageDailyProgress = {};
+  const completedStageSet = new Set(legacyJourney.completedStages);
+
+  NAFS_STAGES.forEach((stage) => {
+    const stageKey = String(stage.id);
+    const normalizedStage = normalizeStageDailyProgress(
+      stage,
+      rawStageDailyProgress[stageKey],
+      legacyJourney,
+    );
+    stageDailyProgress[stageKey] = normalizedStage;
+
+    if (normalizedStage.completedDays.length >= STAGE_DAYS_REQUIRED) {
+      completedStageSet.add(stage.id);
+    }
+  });
+
   return {
     ...JOURNEY_DEFAULTS,
     ...raw,
     selfAssessedStageId: raw.selfAssessedStageId ?? null,
     selfAssessedAt:      raw.selfAssessedAt      ?? null,
-    completedStages: safeArray(raw.completedStages),
+    completedStages: [...completedStageSet].sort((a, b) => a - b),
+    stageDailyProgress,
     stageTasks: safeObject(raw.stageTasks),
     stageTracker: safeObject(raw.stageTracker),
     stageNotes: safeObject(raw.stageNotes),
@@ -232,32 +347,58 @@ function buildDailyFocus(stage, journey, completedSet) {
   if (!stage) return null;
 
   const stageKey = String(stage.id);
-  const taskIds = safeArray(journey.stageTasks[stageKey]);
-  const trackedDays = safeArray(journey.stageTracker[stageKey]);
-  const noteText = journey.stageNotes[stageKey] || '';
+  const stageProgress = safeObject(journey.stageDailyProgress[stageKey]);
+  const currentDay = clampStageDay(stageProgress.currentDay);
+  const dayState = safeObject(stageProgress.dayData?.[String(currentDay)]);
+  const taskIds = safeArray(dayState.taskIds);
+  const noteText = String(dayState.note || '');
+  const practiced = Boolean(dayState.practiced);
   const todayKey = getDateKey();
   const isCompleted = completedSet.has(stage.id);
+  const dayLockedToday = stageProgress.lastAdvancedDateKey === todayKey;
+
+  if (isCompleted) {
+    return {
+      type: 'maintain',
+      stageId: stage.id,
+      stageName: stage.name,
+      title: 'Bosqich yakunlangan',
+      detail: "Jarayon yakunlangan. Endi shu bosqichning odatlarini barqaror ushlab boring.",
+      actionLabel: "Bugungi amaliyotni belgilash",
+    };
+  }
+
+  if (dayLockedToday) {
+    return {
+      type: 'wait_next_day',
+      stageId: stage.id,
+      stageName: stage.name,
+      title: `${currentDay}-kun yakunlandi`,
+      detail: "Bugungi kun yopildi. Keyingi kun ertaga ochiladi.",
+      actionLabel: "Ertangi kunni kutish",
+    };
+  }
 
   const firstMissingTask = stage.practices.find((item) => !taskIds.includes(item.id));
-  if (firstMissingTask && !isCompleted) {
+  if (firstMissingTask) {
     return {
       type: 'task',
       stageId: stage.id,
       taskId: firstMissingTask.id,
       stageName: stage.name,
-      title: 'Bugungi eng muhim qadam: checklist',
+      title: `${currentDay}-kun: checklist`,
       detail: firstMissingTask.text,
       actionLabel: 'Qadamni bajarish',
     };
   }
 
-  if (!trackedDays.includes(todayKey)) {
+  if (!practiced) {
     return {
       type: 'tracker',
       stageId: stage.id,
       stageName: stage.name,
-      title: 'Bugungi eng muhim qadam: amaliy iz',
-      detail: "Bugungi amalni belgilab 7 kunlik ritmni ushlab turing.",
+      title: `${currentDay}-kun: amaliy iz`,
+      detail: "Bugungi amaliyotni belgilang. Shu kunning vazifasi faqat shundan keyin yopiladi.",
       actionLabel: "Bugungi amaliyotni belgilash",
     };
   }
@@ -267,30 +408,21 @@ function buildDailyFocus(stage, journey, completedSet) {
       type: 'note',
       stageId: stage.id,
       stageName: stage.name,
-      title: 'Bugungi eng muhim qadam: muhasaba',
+      title: `${currentDay}-kun: muhasaba`,
       detail: `Kamida ${NOTE_MIN_CHARS} belgilik xulosa yozing.`,
       actionLabel: 'Xulosa yozish',
     };
   }
 
-  if (!isCompleted) {
-    return {
-      type: 'complete',
-      stageId: stage.id,
-      stageName: stage.name,
-      title: 'Bugungi eng muhim qadam: bosqichni yakunlash',
-      detail: "Asosiy shartlar tayyor. Bosqichni yakunlab keyingisiga o'ting.",
-      actionLabel: 'Bosqichni yakunlash',
-    };
-  }
-
   return {
-    type: 'maintain',
+    type: 'complete_day',
     stageId: stage.id,
     stageName: stage.name,
-    title: 'Bugungi eng muhim qadam: barqarorlik',
-    detail: "Jarayon yakunlangan. Endi shu bosqichning amaliy intizomini davom ettiring.",
-    actionLabel: "Bugungi amaliyotni belgilash",
+    title: `${currentDay}-kunni yakunlash`,
+    detail: currentDay >= STAGE_DAYS_REQUIRED
+      ? 'Oxirgi kun shartlari tayyor. Bosqichni yakunlash mumkin.'
+      : 'Bugungi kun shartlari tayyor. Kunni yoping va ertangi kun ochiladi.',
+    actionLabel: currentDay >= STAGE_DAYS_REQUIRED ? 'Bosqichni yakunlash' : 'Kunni yakunlash',
   };
 }
 
@@ -299,29 +431,51 @@ function StageCard({
   done,
   active,
   locked,
-  checkedTaskIds,
-  trackedDays,
-  noteText,
+  stageProgress,
   onToggleTask,
-  onToggleToday,
+  onTogglePractice,
   onOpenNote,
-  onComplete,
+  onCompleteDay,
+  onUseFreeze,
 }) {
+  const stageState = safeObject(stageProgress);
+  const currentDay = clampStageDay(stageState.currentDay);
+  const completedDays = safeArray(stageState.completedDays)
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= STAGE_DAYS_REQUIRED);
+  const completedDaySet = new Set(completedDays);
+  const dayState = safeObject(stageState.dayData?.[String(currentDay)]);
+  const checkedTaskIds = safeArray(dayState.taskIds);
+  const noteText = String(dayState.note || '');
+  const practiced = Boolean(dayState.practiced);
+  const freezeUsedDays = safeArray(stageState.freezeUsedDays)
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= STAGE_DAYS_REQUIRED);
+  const freezeUsedSet = new Set(freezeUsedDays);
+
   const taskTotal = stage.practices.length;
   const taskDone = checkedTaskIds.length;
-  const trackerDone = trackedDays.length;
+  const completedCount = completedDays.length;
   const noteDone = isNoteReady(noteText);
   const todayKey = getDateKey();
-  const markedToday = trackedDays.includes(todayKey);
-
-  const allTasksDone = taskDone >= taskTotal;
-  const canComplete = !done && !locked && allTasksDone && trackerDone >= TRACKER_REQUIRED_DAYS && noteDone;
+  const isLockedToday = stageState.lastAdvancedDateKey === todayKey;
+  const freezeCredits = Math.max(0, Number(stageState.freezeCredits || STAGE_FREEZE_CREDITS));
+  const freezeRemaining = Math.max(0, freezeCredits - freezeUsedDays.length);
+  const dayAlreadyCompleted = completedDaySet.has(currentDay);
+  const allTasksDone = stage.practices.every((item) => checkedTaskIds.includes(item.id));
+  const canComplete = !done && !locked && !isLockedToday && !dayAlreadyCompleted && allTasksDone && practiced && noteDone;
+  const canUseFreeze = !done && !locked && !isLockedToday && !dayAlreadyCompleted && freezeRemaining > 0;
+  const interactionDisabled = done || locked || isLockedToday || dayAlreadyCompleted;
 
   const blockers = [];
   if (locked) blockers.push("Oldingi bosqich tugallanmagan.");
-  if (!allTasksDone) blockers.push(`Checklist: ${taskDone}/${taskTotal}.`);
-  if (trackerDone < TRACKER_REQUIRED_DAYS) blockers.push(`Amaliy kun: ${trackerDone}/${TRACKER_REQUIRED_DAYS}.`);
-  if (!noteDone) blockers.push(`Xulosa: kamida ${NOTE_MIN_CHARS} belgi.`);
+  if (isLockedToday) blockers.push('Bugungi kun yopilgan. Keyingi kun ertaga ochiladi.');
+  if (dayAlreadyCompleted) blockers.push('Joriy kun allaqachon yakunlangan.');
+  if (!locked && !isLockedToday && !dayAlreadyCompleted) {
+    if (!allTasksDone) blockers.push(`Checklist: ${taskDone}/${taskTotal}.`);
+    if (!practiced) blockers.push("Bugungi amaliy iz belgilanmagan.");
+    if (!noteDone) blockers.push(`Xulosa: kamida ${NOTE_MIN_CHARS} belgi.`);
+  }
 
   return (
     <article
@@ -332,10 +486,11 @@ function StageCard({
         <div className="nafs-stage-index">{stage.id}</div>
         <div className="nafs-stage-title">
           <h3>{stage.name}</h3>
-          <p>{stage.subtitle}</p>
+          <p>{stage.subtitle} — {currentDay}-kun</p>
         </div>
         <div className="nafs-stage-badges">
           <span className="badge badge-accent">{stage.ayah}</span>
+          <span className="badge badge-accent">Kun {currentDay}/{STAGE_DAYS_REQUIRED}</span>
           <span className="badge badge-gold"><IconXP size={11} /> +{stage.xpReward} XP</span>
         </div>
       </div>
@@ -344,13 +499,13 @@ function StageCard({
       {stage.heartMessage && <blockquote className="nafs-stage-heart">{stage.heartMessage}</blockquote>}
 
       <div className="nafs-checklist-head">
-        <strong>Amaliy checklist</strong>
+        <strong>{currentDay}-kun checklisti</strong>
         <span>{taskDone}/{taskTotal}</span>
       </div>
       <ul className="nafs-practices">
         {stage.practices.map((item) => {
           const checked = checkedTaskIds.includes(item.id);
-          const disabled = done || locked;
+          const disabled = interactionDisabled;
           return (
             <li key={item.id}>
               <label className={`nafs-check ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}`}>
@@ -369,29 +524,47 @@ function StageCard({
 
       <div className="nafs-tracker card">
         <div className="nafs-tracker-head">
-          <strong>7 kunlik amaliy iz</strong>
-          <span>{trackerDone}/{TRACKER_TARGET_DAYS}</span>
+          <strong>30 kunlik intizom</strong>
+          <span>{completedCount}/{STAGE_DAYS_REQUIRED}</span>
         </div>
         <div className="nafs-tracker-dots">
-          {Array.from({ length: TRACKER_TARGET_DAYS }).map((_, index) => (
-            <span key={`${stage.id}-${index + 1}`} className={`nafs-dot ${index < trackerDone ? 'done' : ''}`}>
-              {index + 1}
-            </span>
-          ))}
+          {Array.from({ length: STAGE_DAYS_REQUIRED }).map((_, index) => {
+            const day = index + 1;
+            const isDone = completedDaySet.has(day);
+            const isCurrent = !done && day === currentDay;
+            const isLockedDay = day > currentDay;
+            const isFrozen = freezeUsedSet.has(day);
+            return (
+              <span
+                key={`${stage.id}-${day}`}
+                className={`nafs-dot ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''} ${isLockedDay ? 'locked' : ''} ${isFrozen ? 'frozen' : ''}`}
+                title={`Kun ${day}${isFrozen ? ' (freeze)' : ''}`}
+              >
+                {day}
+              </span>
+            );
+          })}
         </div>
-        <button
-          className="btn btn-outline nafs-tracker-btn"
-          onClick={() => onToggleToday(stage.id)}
-          disabled={done || locked}
-        >
-          {markedToday ? "Bugungi amaliyotni bekor qilish" : "Bugungi amaliyotni belgilash"}
-        </button>
+        <div className="nafs-tracker-actions">
+          <button
+            className="btn btn-outline nafs-tracker-btn"
+            onClick={() => onTogglePractice(stage.id)}
+            disabled={interactionDisabled}
+          >
+            {practiced ? "Bugungi amalni bekor qilish" : "Bugungi amaliyotni belgilash"}
+          </button>
+          {!done && (
+            <span className="nafs-freeze-chip">
+              Freeze: {freezeRemaining}/{freezeCredits}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="nafs-note-area">
         <div className="nafs-note-head">
           <strong>Muhasaba xulosasi</strong>
-          <button className="btn btn-ghost nafs-note-btn" onClick={() => onOpenNote(stage.id)}>
+          <button className="btn btn-ghost nafs-note-btn" onClick={() => onOpenNote(stage.id)} disabled={interactionDisabled}>
             <IconEdit size={14} />
             {noteText.trim() ? 'Xulosani tahrirlash' : 'Xulosa yozish'}
           </button>
@@ -408,9 +581,14 @@ function StageCard({
         {done ? (
           <span className="badge badge-success"><IconCheckCircle size={12} /> Bosqich yakunlandi</span>
         ) : (
-          <button className="btn btn-primary" onClick={() => onComplete(stage.id)} disabled={!canComplete}>
-            Bosqichni yakunlash
-          </button>
+          <div className="nafs-stage-actions">
+            <button className="btn btn-primary" onClick={() => onCompleteDay(stage.id)} disabled={!canComplete}>
+              {currentDay >= STAGE_DAYS_REQUIRED ? 'Bosqichni yakunlash' : 'Kunni yakunlash'}
+            </button>
+            <button className="btn btn-ghost" onClick={() => onUseFreeze(stage.id)} disabled={!canUseFreeze}>
+              Freeze ishlatish
+            </button>
+          </div>
         )}
         {!done && blockers.length > 0 && <p className="nafs-stage-hint">{blockers.join(' ')}</p>}
       </div>
@@ -500,7 +678,39 @@ export default function NafsJourney() {
   const xpEventIdRef = useRef(0);
 
   const journey = normalizeJourney(user?.nafsJourney);
-  const completedSet = useMemo(() => new Set(journey.completedStages), [journey.completedStages]);
+  const stageDailyProgress = safeObject(journey.stageDailyProgress);
+  const getStageDaily = useCallback((stageId) => {
+    const stageKey = String(stageId);
+    const raw = safeObject(stageDailyProgress[stageKey]);
+    const currentDay = clampStageDay(raw.currentDay);
+    const completedDays = safeArray(raw.completedDays)
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= STAGE_DAYS_REQUIRED)
+      .sort((a, b) => a - b);
+    const dayState = safeObject(raw.dayData?.[String(currentDay)]);
+    const freezeUsedDays = safeArray(raw.freezeUsedDays)
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= STAGE_DAYS_REQUIRED);
+    return {
+      ...raw,
+      currentDay,
+      completedDays,
+      completedCount: completedDays.length,
+      dayState,
+      freezeUsedDays,
+      freezeRemaining: Math.max(0, Math.max(0, Number(raw.freezeCredits || STAGE_FREEZE_CREDITS)) - freezeUsedDays.length),
+    };
+  }, [stageDailyProgress]);
+  const completedSet = useMemo(() => {
+    const completed = new Set(safeArray(journey.completedStages));
+    NAFS_STAGES.forEach((stage) => {
+      const stageState = safeObject(stageDailyProgress[String(stage.id)]);
+      if (safeArray(stageState.completedDays).length >= STAGE_DAYS_REQUIRED) {
+        completed.add(stage.id);
+      }
+    });
+    return completed;
+  }, [journey.completedStages, stageDailyProgress]);
   const assessedStageId = useMemo(() => {
     const value = Number(journey.selfAssessedStageId);
     if (!Number.isFinite(value)) return 1;
@@ -543,22 +753,27 @@ export default function NafsJourney() {
     const score = stagePath.reduce((sum, stage) => {
       if (completedSet.has(stage.id)) return sum + 1;
 
-      const stageKey = String(stage.id);
-      const taskRatio = Math.min(1, safeArray(journey.stageTasks[stageKey]).length / stage.practices.length);
-      const trackerRatio = Math.min(1, safeArray(journey.stageTracker[stageKey]).length / TRACKER_REQUIRED_DAYS);
-      const noteRatio = isNoteReady(journey.stageNotes[stageKey]) ? 1 : 0;
-      return sum + (taskRatio * 0.55) + (trackerRatio * 0.3) + (noteRatio * 0.15);
+      const stageDaily = getStageDaily(stage.id);
+      const dayTaskDone = stage.practices.every((item) => safeArray(stageDaily.dayState.taskIds).includes(item.id));
+      const dayPracticeDone = Boolean(stageDaily.dayState.practiced);
+      const dayNoteDone = isNoteReady(stageDaily.dayState.note || '');
+      const dayPartial = (dayTaskDone ? 0.5 : 0) + (dayPracticeDone ? 0.2 : 0) + (dayNoteDone ? 0.3 : 0);
+      const stageRatio = Math.min(1, ((stageDaily.completedCount || 0) + dayPartial) / STAGE_DAYS_REQUIRED);
+      return sum + stageRatio;
     }, 0);
 
     return Math.round((score / Math.max(stagePath.length, 1)) * 100);
-  }, [completedSet, journey.stageNotes, journey.stageTasks, journey.stageTracker, stagePath]);
+  }, [completedSet, getStageDaily, stagePath]);
 
   const savedNotesCount = useMemo(
-    () => Object.values(journey.stageNotes).filter((text) => Boolean((text || '').trim())).length,
-    [journey.stageNotes],
+    () => stagePath.filter((stage) => {
+      const stageDaily = getStageDaily(stage.id);
+      return Object.values(safeObject(stageDaily.dayData)).some((entry) => isNoteReady(entry?.note || ''));
+    }).length,
+    [getStageDaily, stagePath],
   );
 
-  const activeTrackedDays = safeArray(journey.stageTracker[String(activeStage.id)]).length;
+  const activeTrackedDays = getStageDaily(activeStage.id).completedCount;
 
   const weeklyActivity = useMemo(() => {
     const baseDays = getRecentDays();
@@ -605,10 +820,8 @@ export default function NafsJourney() {
   }, [journey.stageTracker]);
 
   const fullyPreparedStages = useMemo(
-    () => NAFS_STAGES.filter((stage) => stage.practices.every((item) => (
-      safeArray(journey.stageTasks[String(stage.id)]).includes(item.id)
-    ))).length,
-    [journey.stageTasks],
+    () => stagePath.filter((stage) => getStageDaily(stage.id).completedCount >= 15).length,
+    [getStageDaily, stagePath],
   );
 
   const focusStage = useMemo(() => {
@@ -618,7 +831,7 @@ export default function NafsJourney() {
     let minCount = Number.POSITIVE_INFINITY;
 
     stagePath.forEach((stage) => {
-      const count = safeArray(journey.stageTracker[String(stage.id)]).length;
+      const count = getStageDaily(stage.id).completedCount;
       if (count < minCount) {
         candidate = stage;
         minCount = count;
@@ -626,7 +839,7 @@ export default function NafsJourney() {
     });
 
     return candidate;
-  }, [activeStage, isJourneyComplete, journey.stageTracker, stagePath]);
+  }, [activeStage, getStageDaily, isJourneyComplete, stagePath]);
 
   const dailyFocus = useMemo(
     () => buildDailyFocus(focusStage, journey, completedSet),
@@ -722,7 +935,7 @@ export default function NafsJourney() {
         id: 'nafs_ready_4',
         icon: 'TB',
         label: 'Tayyor Bosqichlar',
-        desc: '4 bosqich checklistini toliq bajaring.',
+        desc: "4 bosqichda kamida 15 kunlik ritmni ushlang.",
         target: 4,
         progress: fullyPreparedStages,
         xpBonus: 55,
@@ -1065,6 +1278,25 @@ export default function NafsJourney() {
     return !completedSet.has(prevStageId);
   };
 
+  const isStageLockedToday = (stageId) => {
+    const stageDaily = getStageDaily(stageId);
+    return stageDaily.lastAdvancedDateKey === todayKey;
+  };
+
+  const toPersistedStageDaily = (stageDaily) => ({
+    currentDay: clampStageDay(stageDaily.currentDay),
+    completedDays: safeArray(stageDaily.completedDays)
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= STAGE_DAYS_REQUIRED)
+      .sort((a, b) => a - b),
+    dayData: safeObject(stageDaily.dayData),
+    freezeCredits: Math.max(0, Number(stageDaily.freezeCredits || STAGE_FREEZE_CREDITS)),
+    freezeUsedDays: safeArray(stageDaily.freezeUsedDays)
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= STAGE_DAYS_REQUIRED),
+    lastAdvancedDateKey: stageDaily.lastAdvancedDateKey || null,
+  });
+
   const jumpToStage = (stageId) => {
     if (!stagePath.some((stage) => stage.id === stageId)) return;
     setStageTabId(stageId);
@@ -1077,42 +1309,83 @@ export default function NafsJourney() {
   };
 
   const toggleTask = (stageId, taskId) => {
-    if (completedSet.has(stageId) || isLockedStage(stageId)) return;
+    if (completedSet.has(stageId) || isLockedStage(stageId) || isStageLockedToday(stageId)) return;
+    const stage = NAFS_STAGES.find((item) => item.id === stageId);
+    if (!stage) return;
 
     const stageKey = String(stageId);
-    const current = safeArray(journey.stageTasks[stageKey]);
-    const exists = current.includes(taskId);
-    const nextTasks = {
-      ...journey.stageTasks,
-      [stageKey]: exists ? current.filter((id) => id !== taskId) : [...current, taskId],
-    };
+    const stageDaily = getStageDaily(stageId);
+    const dayKey = String(stageDaily.currentDay);
+    const dayState = safeObject(stageDaily.dayData?.[dayKey]);
+    if (dayState.completed) return;
 
-    persistJourney({ stageTasks: nextTasks });
+    const currentTaskIds = safeArray(dayState.taskIds);
+    const exists = currentTaskIds.includes(taskId);
+    const nextTaskIds = exists
+      ? currentTaskIds.filter((id) => id !== taskId)
+      : [...currentTaskIds, taskId];
+
+    const nextStageDaily = toPersistedStageDaily({
+      ...stageDaily,
+      dayData: {
+        ...safeObject(stageDaily.dayData),
+        [dayKey]: {
+          ...dayState,
+          taskIds: nextTaskIds,
+        },
+      },
+    });
+
+    const legacyTaskIds = safeArray(journey.stageTasks[stageKey]);
+    const validTaskIds = stage.practices.map((item) => item.id);
+    const mergedLegacyTasks = [...new Set([...legacyTaskIds, ...nextTaskIds])]
+      .filter((id) => validTaskIds.includes(id));
+
+    persistJourney({
+      stageDailyProgress: {
+        ...stageDailyProgress,
+        [stageKey]: nextStageDaily,
+      },
+      stageTasks: {
+        ...journey.stageTasks,
+        [stageKey]: mergedLegacyTasks,
+      },
+    });
   };
 
   const toggleTodayPractice = (stageId) => {
-    if (isLockedStage(stageId)) return;
+    if (isLockedStage(stageId) || completedSet.has(stageId) || isStageLockedToday(stageId)) return;
 
     const stageKey = String(stageId);
-    const todayKey = getDateKey();
-    const current = safeArray(journey.stageTracker[stageKey]);
-    const nextDays = current.includes(todayKey)
-      ? current.filter((day) => day !== todayKey)
-      : [...current, todayKey].sort().slice(-TRACKER_TARGET_DAYS);
+    const stageDaily = getStageDaily(stageId);
+    const dayKey = String(stageDaily.currentDay);
+    const dayState = safeObject(stageDaily.dayData?.[dayKey]);
+    if (dayState.completed) return;
+    const nextPracticed = !dayState.practiced;
 
     persistJourney({
-      stageTracker: {
-        ...journey.stageTracker,
-        [stageKey]: nextDays,
+      stageDailyProgress: {
+        ...stageDailyProgress,
+        [stageKey]: toPersistedStageDaily({
+          ...stageDaily,
+          dayData: {
+            ...safeObject(stageDaily.dayData),
+            [dayKey]: {
+              ...dayState,
+              practiced: nextPracticed,
+            },
+          },
+        }),
       },
     });
   };
 
   const openNoteModal = (stageId) => {
-    const stageKey = String(stageId);
+    const stageDaily = getStageDaily(stageId);
+    const dayState = safeObject(stageDaily.dayData?.[String(stageDaily.currentDay)]);
     setNoteModalStageId(stageId);
     setNoteSaved(false);
-    setNoteDraft(journey.stageNotes[stageKey] || '');
+    setNoteDraft(dayState.note || '');
   };
 
   const closeNoteModal = () => {
@@ -1122,40 +1395,133 @@ export default function NafsJourney() {
 
   const saveStageNote = () => {
     if (!noteModalStageId) return;
+    if (isLockedStage(noteModalStageId) || completedSet.has(noteModalStageId) || isStageLockedToday(noteModalStageId)) return;
 
     const stageKey = String(noteModalStageId);
-    const trimmed = noteDraft.trim();
-    const nextNotes = { ...journey.stageNotes };
-    if (trimmed) nextNotes[stageKey] = trimmed;
-    else delete nextNotes[stageKey];
+    const stageDaily = getStageDaily(noteModalStageId);
+    const dayKey = String(stageDaily.currentDay);
+    const dayState = safeObject(stageDaily.dayData?.[dayKey]);
+    if (dayState.completed) return;
 
-    persistJourney({ stageNotes: nextNotes });
+    const trimmed = noteDraft.trim();
+    const nextStageDaily = toPersistedStageDaily({
+      ...stageDaily,
+      dayData: {
+        ...safeObject(stageDaily.dayData),
+        [dayKey]: {
+          ...dayState,
+          note: trimmed,
+        },
+      },
+    });
+    const nextNotes = {
+      ...journey.stageNotes,
+      [stageKey]: trimmed,
+    };
+
+    persistJourney({
+      stageDailyProgress: {
+        ...stageDailyProgress,
+        [stageKey]: nextStageDaily,
+      },
+      stageNotes: nextNotes,
+    });
     setNoteSaved(true);
   };
 
-  const completeStage = (stageId) => {
+  const completeStageDay = (stageId, useFreeze = false) => {
     if (completedSet.has(stageId) || isLockedStage(stageId)) return;
+    if (isStageLockedToday(stageId)) return;
 
     const stage = NAFS_STAGES.find((item) => item.id === stageId);
     if (!stage) return;
 
     const stageKey = String(stageId);
-    const checkedTaskIds = safeArray(journey.stageTasks[stageKey]);
-    const trackedDays = safeArray(journey.stageTracker[stageKey]);
-    const noteText = journey.stageNotes[stageKey] || '';
+    const stageDaily = getStageDaily(stageId);
+    const dayNumber = stageDaily.currentDay;
+    const dayKey = String(dayNumber);
+    const dayState = safeObject(stageDaily.dayData?.[dayKey]);
+    if (dayState.completed) return;
 
+    const checkedTaskIds = safeArray(dayState.taskIds);
     const allTasksDone = stage.practices.every((item) => checkedTaskIds.includes(item.id));
-    const enoughTrackerDays = trackedDays.length >= TRACKER_REQUIRED_DAYS;
-    if (!allTasksDone || !enoughTrackerDays || !isNoteReady(noteText)) return;
+    const practiced = Boolean(dayState.practiced);
+    const noteText = String(dayState.note || '');
+    const noteReady = isNoteReady(noteText);
+    const freezeRemaining = stageDaily.freezeRemaining;
 
-    const nextCompleted = [...journey.completedStages, stageId].sort((a, b) => a - b);
-    const xpGain = stage.xpReward;
-    grantJourneyXP(
-      stage.name,
-      xpGain,
-      { completedStages: nextCompleted },
-      {},
-    );
+    if (useFreeze) {
+      if (freezeRemaining <= 0) return;
+    } else if (!allTasksDone || !practiced || !noteReady) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const nextCompletedDays = [...new Set([...stageDaily.completedDays, dayNumber])].sort((a, b) => a - b);
+    const isFinalDay = nextCompletedDays.length >= STAGE_DAYS_REQUIRED;
+    const nextCurrentDay = isFinalDay ? STAGE_DAYS_REQUIRED : clampStageDay(dayNumber + 1);
+    const nextFreezeUsedDays = useFreeze
+      ? [...new Set([...stageDaily.freezeUsedDays, dayNumber])].sort((a, b) => a - b)
+      : stageDaily.freezeUsedDays;
+
+    const nextStageDaily = toPersistedStageDaily({
+      ...stageDaily,
+      currentDay: nextCurrentDay,
+      completedDays: nextCompletedDays,
+      freezeUsedDays: nextFreezeUsedDays,
+      lastAdvancedDateKey: todayKey,
+      dayData: {
+        ...safeObject(stageDaily.dayData),
+        [dayKey]: {
+          ...dayState,
+          taskIds: allTasksDone ? checkedTaskIds : stage.practices.map((item) => item.id),
+          practiced: true,
+          note: noteText,
+          dateKey: todayKey,
+          completed: true,
+          frozen: Boolean(useFreeze),
+          completedAt: now,
+        },
+      },
+    });
+
+    const nextStageTracker = {
+      ...journey.stageTracker,
+      [stageKey]: [...new Set([...safeArray(journey.stageTracker[stageKey]), todayKey])].slice(-STAGE_DAYS_REQUIRED),
+    };
+    const nextStageNotes = {
+      ...journey.stageNotes,
+      [stageKey]: noteText,
+    };
+    const nextStageDailyProgress = {
+      ...stageDailyProgress,
+      [stageKey]: nextStageDaily,
+    };
+
+    if (isFinalDay) {
+      const nextCompleted = [...new Set([...journey.completedStages, stageId])].sort((a, b) => a - b);
+      grantJourneyXP(
+        stage.name,
+        stage.xpReward,
+        {
+          completedStages: nextCompleted,
+          stageDailyProgress: nextStageDailyProgress,
+          stageTracker: nextStageTracker,
+          stageNotes: nextStageNotes,
+        },
+      );
+      return;
+    }
+
+    persistJourney({
+      stageDailyProgress: nextStageDailyProgress,
+      stageTracker: nextStageTracker,
+      stageNotes: nextStageNotes,
+    });
+  };
+
+  const useStageFreeze = (stageId) => {
+    completeStageDay(stageId, true);
   };
 
   const handleDailyFocusAction = () => {
@@ -1176,8 +1542,8 @@ export default function NafsJourney() {
       return;
     }
 
-    if (dailyFocus.type === 'complete') {
-      completeStage(dailyFocus.stageId);
+    if (dailyFocus.type === 'complete_day') {
+      completeStageDay(dailyFocus.stageId);
     }
   };
 
@@ -1246,6 +1612,7 @@ export default function NafsJourney() {
   const noteModalStage = noteModalStageId
     ? NAFS_STAGES.find((stage) => stage.id === noteModalStageId)
     : null;
+  const noteModalDay = noteModalStageId ? getStageDaily(noteModalStageId).currentDay : 1;
 
   // Birinchi kirish: baholash ekrani
   if (!journey.selfAssessedStageId) {
@@ -1259,8 +1626,8 @@ export default function NafsJourney() {
           <span className="ui-kicker"><IconHeart size={14} /> Nafs Tarbiyasi Yo'li</span>
           <h1>Nafsning 7 bosqichi: nazariyadan amaliyotga</h1>
           <p>
-            Har bir bosqich faqat bitta tugma bilan emas, balki checklist, kunlik amaliy iz va muhasaba yozuvi
-            orqali tugallanadi. Bu usul nafs tarbiyasini odatga aylantiradi.
+            Har bir bosqich kamida 30 kunlik safar: har kun checklist, amaliy iz va muhasaba yozuvi
+            to'liq bo'lmasa keyingi kunga o'tib bo'lmaydi.
           </p>
           <div className="nafs-principles">
             <span className="badge badge-gold"><IconTarget size={12} /> Sunnatga muvofiq yashash</span>
@@ -1289,7 +1656,7 @@ export default function NafsJourney() {
             <div className="progress-bar">
               <div className="progress-bar-fill" style={{ width: `${overallProgress}%` }} />
             </div>
-            <p>Checklist + amaliy kunlar + xulosa hisobga olindi</p>
+            <p>Har bosqichda 30 kunlik intizom hisobga olindi</p>
           </div>
         </aside>
 
@@ -1300,7 +1667,7 @@ export default function NafsJourney() {
           </div>
           <div className="nafs-metric card">
             <span className="nafs-metric-label">Faol bosqich amaliy kuni</span>
-            <strong>{activeTrackedDays}/{TRACKER_TARGET_DAYS}</strong>
+            <strong>{activeTrackedDays}/{STAGE_DAYS_REQUIRED}</strong>
           </div>
           <div className="nafs-metric card">
             <span className="nafs-metric-label">Yozilgan xulosalar</span>
@@ -1324,7 +1691,7 @@ export default function NafsJourney() {
           <p className="nafs-focus-detail">{dailyFocus?.detail}</p>
 
           <div className="nafs-focus-actions">
-            <button className="btn btn-primary" onClick={handleDailyFocusAction}>
+            <button className="btn btn-primary" onClick={handleDailyFocusAction} disabled={dailyFocus?.type === 'wait_next_day'}>
               {dailyFocus?.actionLabel || 'Amal bajarish'}
             </button>
             <button className="btn btn-outline" onClick={() => jumpToStage(dailyFocus?.stageId || activeStage.id)}>
@@ -1783,13 +2150,12 @@ export default function NafsJourney() {
             done={completedSet.has(selectedStage.id)}
             active={!completedSet.has(selectedStage.id) && selectedStage.id === nextStageId}
             locked={!completedSet.has(selectedStage.id) && isLockedStage(selectedStage.id)}
-            checkedTaskIds={safeArray(journey.stageTasks[String(selectedStage.id)])}
-            trackedDays={safeArray(journey.stageTracker[String(selectedStage.id)])}
-            noteText={journey.stageNotes[String(selectedStage.id)] || ''}
+            stageProgress={getStageDaily(selectedStage.id)}
             onToggleTask={toggleTask}
-            onToggleToday={toggleTodayPractice}
+            onTogglePractice={toggleTodayPractice}
             onOpenNote={openNoteModal}
-            onComplete={completeStage}
+            onCompleteDay={completeStageDay}
+            onUseFreeze={useStageFreeze}
           />
         </div>
       </section>
@@ -1809,7 +2175,7 @@ export default function NafsJourney() {
           <div className="nafs-note-card card">
             <header className="nafs-note-header">
               <div>
-                <p className="ui-kicker">{noteModalStage.id}-bosqich</p>
+                <p className="ui-kicker">{noteModalStage.id}-bosqich, {noteModalDay}-kun</p>
                 <h3>{noteModalStage.name} uchun xulosa</h3>
               </div>
               <button className="btn btn-ghost" onClick={closeNoteModal}>Yopish</button>

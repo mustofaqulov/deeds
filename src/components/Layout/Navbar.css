@@ -45,10 +45,10 @@
   align-items: center;
   gap: 8px;
 
-  background: rgba(13, 91, 74, 0.08);
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
   padding: 4px 10px;
   border-radius: 16px;
-  border: 1px solid rgba(13, 91, 74, 0.1);
+  border: 1px solid color-mix(in srgb, var(--primary) 16%, transparent);
   max-width: 74vw;
   overflow-x: auto;
   scrollbar-width: none;
@@ -75,13 +75,13 @@
 
 .nav-link:hover {
   color: var(--primary);
-  background: rgba(13, 91, 74, 0.14);
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
 }
 
 .nav-link.active {
   background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
   color: white;
-  box-shadow: 0 8px 20px rgba(13, 91, 74, 0.28);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 32%, transparent);
 }
 
 .nav-link.active svg {
@@ -130,7 +130,7 @@
   justify-content: center;
   overflow: hidden;
 
-  box-shadow: 0 8px 20px rgba(13, 91, 74, 0.28);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 32%, transparent);
   transition: 0.25s ease;
 }
 
