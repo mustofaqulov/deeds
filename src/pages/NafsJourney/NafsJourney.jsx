@@ -484,7 +484,12 @@ export default function NafsJourney() {
   const [reviewDraft, setReviewDraft] = useState({ wins: '', blockers: '', plan: '' });
   const [reviewSaved, setReviewSaved] = useState(false);
   const [xpToast, setXpToast] = useState(null);
-  const [knowledgeStageId, setKnowledgeStageId] = useState(1);
+  const [stageTabId, setStageTabId] = useState(null);
+  const [knowledgeStageId, setKnowledgeStageId] = useState(() => {
+    const selectedId = Number(user?.nafsJourney?.selfAssessedStageId);
+    if (!Number.isFinite(selectedId)) return 1;
+    return Math.min(NAFS_STAGES.length, Math.max(1, selectedId));
+  });
   const [expandedArticleId, setExpandedArticleId] = useState(null);
   const [paragraphDraftId, setParagraphDraftId] = useState(null);
   const [paragraphDraft, setParagraphDraft] = useState('');
@@ -496,24 +501,46 @@ export default function NafsJourney() {
 
   const journey = normalizeJourney(user?.nafsJourney);
   const completedSet = useMemo(() => new Set(journey.completedStages), [journey.completedStages]);
+  const assessedStageId = useMemo(() => {
+    const value = Number(journey.selfAssessedStageId);
+    if (!Number.isFinite(value)) return 1;
+    return Math.min(NAFS_STAGES.length, Math.max(1, value));
+  }, [journey.selfAssessedStageId]);
+  const stagePath = useMemo(
+    () => NAFS_STAGES.filter((stage) => stage.id >= assessedStageId),
+    [assessedStageId],
+  );
 
   const nextStageId = useMemo(() => {
     // Hech bir bosqich tugatilmagan bo'lsa va o'z-o'zini baholagan bo'lsa — u bosqichdan boshlash
-    if (completedSet.size === 0 && journey.selfAssessedStageId) {
-      return journey.selfAssessedStageId;
-    }
-    const next = NAFS_STAGES.find((stage) => !completedSet.has(stage.id));
-    return next ? next.id : NAFS_STAGES.length;
-  }, [completedSet, journey.selfAssessedStageId]);
+    const next = stagePath.find((stage) => !completedSet.has(stage.id));
+    if (next) return next.id;
+    return stagePath[stagePath.length - 1]?.id || assessedStageId;
+  }, [assessedStageId, completedSet, stagePath]);
 
   const completedCount = completedSet.size;
-  const isJourneyComplete = completedCount === NAFS_STAGES.length;
+  const completedPathCount = useMemo(
+    () => stagePath.filter((stage) => completedSet.has(stage.id)).length,
+    [completedSet, stagePath],
+  );
+  const isJourneyComplete = stagePath.length > 0 && completedPathCount >= stagePath.length;
   const activeStage = NAFS_STAGES.find((stage) => stage.id === nextStageId) || NAFS_STAGES[NAFS_STAGES.length - 1];
-  const stageCompletionPercent = Math.round((completedCount / NAFS_STAGES.length) * 100);
+  const lastPathStageId = stagePath[stagePath.length - 1]?.id || assessedStageId;
+  const stageCompletionPercent = Math.round((completedPathCount / Math.max(stagePath.length, 1)) * 100);
   const todayKey = getDateKey();
+  const selectedStageId = useMemo(() => {
+    if (stagePath.length === 0) return assessedStageId;
+    const hasTab = stagePath.some((stage) => stage.id === stageTabId);
+    if (hasTab) return stageTabId;
+    return nextStageId;
+  }, [assessedStageId, nextStageId, stagePath, stageTabId]);
+  const selectedStage = useMemo(
+    () => stagePath.find((stage) => stage.id === selectedStageId) || activeStage,
+    [activeStage, selectedStageId, stagePath],
+  );
 
   const overallProgress = useMemo(() => {
-    const score = NAFS_STAGES.reduce((sum, stage) => {
+    const score = stagePath.reduce((sum, stage) => {
       if (completedSet.has(stage.id)) return sum + 1;
 
       const stageKey = String(stage.id);
@@ -523,8 +550,8 @@ export default function NafsJourney() {
       return sum + (taskRatio * 0.55) + (trackerRatio * 0.3) + (noteRatio * 0.15);
     }, 0);
 
-    return Math.round((score / NAFS_STAGES.length) * 100);
-  }, [completedSet, journey.stageNotes, journey.stageTasks, journey.stageTracker]);
+    return Math.round((score / Math.max(stagePath.length, 1)) * 100);
+  }, [completedSet, journey.stageNotes, journey.stageTasks, journey.stageTracker, stagePath]);
 
   const savedNotesCount = useMemo(
     () => Object.values(journey.stageNotes).filter((text) => Boolean((text || '').trim())).length,
@@ -587,10 +614,10 @@ export default function NafsJourney() {
   const focusStage = useMemo(() => {
     if (!isJourneyComplete) return activeStage;
 
-    let candidate = NAFS_STAGES[0];
+    let candidate = stagePath[0] || activeStage;
     let minCount = Number.POSITIVE_INFINITY;
 
-    NAFS_STAGES.forEach((stage) => {
+    stagePath.forEach((stage) => {
       const count = safeArray(journey.stageTracker[String(stage.id)]).length;
       if (count < minCount) {
         candidate = stage;
@@ -599,7 +626,7 @@ export default function NafsJourney() {
     });
 
     return candidate;
-  }, [activeStage, isJourneyComplete, journey.stageTracker]);
+  }, [activeStage, isJourneyComplete, journey.stageTracker, stagePath]);
 
   const dailyFocus = useMemo(
     () => buildDailyFocus(focusStage, journey, completedSet),
@@ -732,6 +759,22 @@ export default function NafsJourney() {
   }, [claimedBadges, completedCount, fullyPreparedStages, savedNotesCount, weeklyActivity.activeDays, weeklyActivity.streak, weeklyActivity.totalCheckins]);
 
   useEffect(() => {
+    if (stagePath.length === 0) return;
+    const hasCurrent = stagePath.some((stage) => stage.id === knowledgeStageId);
+    if (!hasCurrent) {
+      setKnowledgeStageId(stagePath[0].id);
+    }
+  }, [knowledgeStageId, stagePath]);
+
+  useEffect(() => {
+    if (stagePath.length === 0) return;
+    const hasCurrent = stagePath.some((stage) => stage.id === stageTabId);
+    if (!hasCurrent) {
+      setStageTabId(nextStageId);
+    }
+  }, [nextStageId, stagePath, stageTabId]);
+
+  useEffect(() => {
     if (!noteSaved) return undefined;
     const timeoutId = window.setTimeout(() => setNoteSaved(false), 1500);
     return () => window.clearTimeout(timeoutId);
@@ -845,6 +888,8 @@ export default function NafsJourney() {
   };
 
   const handleAssessmentSelect = (stageId) => {
+    setStageTabId(stageId);
+    setKnowledgeStageId(stageId);
     persistJourney({
       selfAssessedStageId: stageId,
       selfAssessedAt:      new Date().toISOString(),
@@ -1013,12 +1058,22 @@ export default function NafsJourney() {
     persistJourney({ articleActionChecks: nextChecks });
   };
 
-  const isLockedStage = (stageId) => stageId > 1 && !completedSet.has(stageId - 1);
+  const isLockedStage = (stageId) => {
+    if (stageId <= assessedStageId) return false;
+    const prevStageId = stageId - 1;
+    if (prevStageId < assessedStageId) return false;
+    return !completedSet.has(prevStageId);
+  };
 
   const jumpToStage = (stageId) => {
-    const target = document.getElementById(`nafs-stage-${stageId}`);
-    if (!target) return;
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!stagePath.some((stage) => stage.id === stageId)) return;
+    setStageTabId(stageId);
+
+    window.setTimeout(() => {
+      const target = document.getElementById(`nafs-stage-${stageId}`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
   };
 
   const toggleTask = (stageId, taskId) => {
@@ -1218,7 +1273,7 @@ export default function NafsJourney() {
           <div className="nafs-progress card">
             <div className="nafs-progress-top">
               <span>Yakunlangan bosqichlar</span>
-              <strong>{completedCount}/{NAFS_STAGES.length}</strong>
+              <strong>{completedPathCount}/{Math.max(stagePath.length, 1)}</strong>
             </div>
             <div className="progress-bar">
               <div className="progress-bar-fill" style={{ width: `${stageCompletionPercent}%` }} />
@@ -1314,7 +1369,7 @@ export default function NafsJourney() {
           </div>
 
           <div className="nafs-evidence-stage-tabs">
-            {NAFS_STAGES.map((stage) => (
+            {stagePath.map((stage) => (
               <button
                 key={stage.id}
                 className={`nafs-stage-chip ${stage.id === knowledgeStage.id ? 'active' : ''}`}
@@ -1591,13 +1646,13 @@ export default function NafsJourney() {
       <section className="nafs-timeline card">
         <div className="nafs-section-head">
           <h2><IconTarget size={16} /> Bosqichlar timeline</h2>
-          <p>{isJourneyComplete ? 'Barcha bosqichlar yakunlangan.' : `${nextStageId}-bosqich faol.`}</p>
+          <p>{isJourneyComplete ? "Tanlangan yo'l yakunlangan." : `${nextStageId}-bosqich faol.`}</p>
         </div>
         <div className="nafs-timeline-scroll">
-          {NAFS_STAGES.map((stage, index) => {
+          {stagePath.map((stage, index) => {
             const done = completedSet.has(stage.id);
-            const locked = !done && stage.id > 1 && !completedSet.has(stage.id - 1);
-            const active = isJourneyComplete ? stage.id === NAFS_STAGES.length : stage.id === nextStageId;
+            const locked = !done && isLockedStage(stage.id);
+            const active = isJourneyComplete ? stage.id === lastPathStageId : stage.id === nextStageId;
 
             return (
               <div key={stage.id} className="nafs-node-wrap">
@@ -1609,7 +1664,7 @@ export default function NafsJourney() {
                   <span className="nafs-node-label">{stage.name.replace('Nafsi ', '')}</span>
                   <span className="nafs-node-sub">{stage.ayah}</span>
                 </button>
-                {index < NAFS_STAGES.length - 1 && (
+                {index < stagePath.length - 1 && (
                   <span className={`nafs-node-link ${done ? 'done' : ''}`} />
                 )}
               </div>
@@ -1682,30 +1737,61 @@ export default function NafsJourney() {
         </article>
       </section>
 
-      <section className="nafs-stage-grid">
-        {NAFS_STAGES.map((stage) => {
-          const stageKey = String(stage.id);
-          const done = completedSet.has(stage.id);
-          const active = !done && stage.id === nextStageId;
-          const locked = !done && isLockedStage(stage.id);
+      <section className="nafs-stage-shell">
+        <div className="nafs-section-head">
+          <h2><IconTarget size={16} /> Bosqich amaliyoti</h2>
+          <p>{selectedStage.id}-bosqich ochiq</p>
+        </div>
 
-          return (
-            <StageCard
-              key={stage.id}
-              stage={stage}
-              done={done}
-              active={active}
-              locked={locked}
-              checkedTaskIds={safeArray(journey.stageTasks[stageKey])}
-              trackedDays={safeArray(journey.stageTracker[stageKey])}
-              noteText={journey.stageNotes[stageKey] || ''}
-              onToggleTask={toggleTask}
-              onToggleToday={toggleTodayPractice}
-              onOpenNote={openNoteModal}
-              onComplete={completeStage}
-            />
-          );
-        })}
+        <div className="nafs-stage-tabs" role="tablist" aria-label="Nafs bosqichlari">
+          {stagePath.map((stage) => {
+            const done = completedSet.has(stage.id);
+            const locked = !done && isLockedStage(stage.id);
+            const active = !done && stage.id === nextStageId;
+            const selected = stage.id === selectedStage.id;
+
+            return (
+              <button
+                key={stage.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={`nafs-stage-panel-${stage.id}`}
+                id={`nafs-stage-tab-${stage.id}`}
+                className={`nafs-stage-tab ${selected ? 'selected' : ''} ${done ? 'done' : ''} ${active ? 'active' : ''} ${locked ? 'locked' : ''}`}
+                onClick={() => setStageTabId(stage.id)}
+              >
+                <span className="nafs-stage-tab-num">{stage.id}</span>
+                <span className="nafs-stage-tab-text">
+                  <strong>{stage.name.replace('Nafsi ', '')}</strong>
+                  <small>{done ? 'Yakunlangan' : locked ? 'Qulflangan' : active ? 'Faol' : "Jarayonda"}</small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div
+          className="nafs-stage-panel"
+          role="tabpanel"
+          id={`nafs-stage-panel-${selectedStage.id}`}
+          aria-labelledby={`nafs-stage-tab-${selectedStage.id}`}
+        >
+          <StageCard
+            key={selectedStage.id}
+            stage={selectedStage}
+            done={completedSet.has(selectedStage.id)}
+            active={!completedSet.has(selectedStage.id) && selectedStage.id === nextStageId}
+            locked={!completedSet.has(selectedStage.id) && isLockedStage(selectedStage.id)}
+            checkedTaskIds={safeArray(journey.stageTasks[String(selectedStage.id)])}
+            trackedDays={safeArray(journey.stageTracker[String(selectedStage.id)])}
+            noteText={journey.stageNotes[String(selectedStage.id)] || ''}
+            onToggleTask={toggleTask}
+            onToggleToday={toggleTodayPractice}
+            onOpenNote={openNoteModal}
+            onComplete={completeStage}
+          />
+        </div>
       </section>
 
       <section className="nafs-summary card">
