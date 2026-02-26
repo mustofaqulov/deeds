@@ -435,6 +435,13 @@
   position: sticky;
   top: 84px;
   min-width: 0;
+  align-self: stretch;
+  max-height: calc(100vh - 108px);
+}
+
+.cal-detail-head,
+.cal-detail-tabs {
+  flex-shrink: 0;
 }
 
 .cal-detail-tabs {
@@ -477,6 +484,37 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 16px;
+  padding-right: 2px;
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(13, 91, 74, 0.22) transparent;
+}
+
+/* Chrome / Safari / Edge */
+.cal-detail-panels::-webkit-scrollbar {
+  width: 5px;
+}
+
+.cal-detail-panels::-webkit-scrollbar-track {
+  background: rgba(13, 91, 74, 0.04);
+  border-radius: 99px;
+  margin: 6px 0;
+}
+
+.cal-detail-panels::-webkit-scrollbar-thumb {
+  background: rgba(13, 91, 74, 0.22);
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  transition: background 0.2s ease;
+}
+
+.cal-detail-panels::-webkit-scrollbar-thumb:hover {
+  background: rgba(13, 91, 74, 0.44);
 }
 
 .cal-detail-panel {
@@ -1328,6 +1366,24 @@
 .cal-alert strong { font-size: 13px; }
 .cal-alert p { margin-top: 3px; font-size: 12px; color: var(--text-secondary); }
 
+/* ── Dark mode scrollbar ──────────────────────────────── */
+[data-theme='dark'] .cal-detail-panels {
+  scrollbar-color: rgba(245, 183, 49, 0.28) transparent;
+}
+
+[data-theme='dark'] .cal-detail-panels::-webkit-scrollbar-track {
+  background: rgba(245, 183, 49, 0.04);
+}
+
+[data-theme='dark'] .cal-detail-panels::-webkit-scrollbar-thumb {
+  background: rgba(245, 183, 49, 0.28);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .cal-detail-panels::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 183, 49, 0.5);
+}
+
 /* ── Animations ───────────────────────────────────────── */
 @keyframes calPop {
   0%   { transform: scale(0.88); }
@@ -1360,6 +1416,12 @@
 
   .cal-detail {
     position: static;
+    align-self: auto;
+    max-height: none;
+  }
+
+  .cal-detail-panels {
+    overflow-y: visible;
   }
 
   .cal-activity-grid {
