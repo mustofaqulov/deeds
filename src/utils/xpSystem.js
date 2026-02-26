@@ -44,20 +44,33 @@ export function getRamadanTimeBonus() {
 }
 
 // ── Ramadan season bonus (3 phases) ───────────────────────
-export function getRamadanSeasonBonus() {
-  const ramadanStart = new Date('2025-03-01');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diff = Math.floor((today - ramadanStart) / (1000 * 60 * 60 * 24));
-  if (diff < 0 || diff >= 30) return { mult: 1.0, label: null, icon: null, id: null };
+// Hijri kalendardan foydalanadi — har yilgi Ramazon avtomatik aniqlanadi
+function getRamadanDayNumber() {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const parts = new Intl.DateTimeFormat('en-u-ca-islamic', {
+      day: 'numeric', month: 'numeric', year: 'numeric',
+    }).formatToParts(today);
+    const month = Number(parts.find((p) => p.type === 'month')?.value);
+    const day   = Number(parts.find((p) => p.type === 'day')?.value);
+    if (month === 9 && Number.isFinite(day)) return Math.min(Math.max(day, 1), 30);
+  } catch {
+    // silent fallback
+  }
+  return 0; // Ramazon emasa
+}
 
-  const day = diff + 1;
+export function getRamadanSeasonBonus() {
+  const ramadanDay = getRamadanDayNumber();
+  if (ramadanDay === 0) return { mult: 1.0, label: null, icon: null, id: null };
+
   const h = new Date().getHours();
-  const isNight = h >= 20 || h <= 6;
-  const isOddDay = day % 2 === 1;
+  const isNight  = h >= 20 || h <= 6;
+  const isOddDay = ramadanDay % 2 === 1;
 
   // So'nggi 10 kecha (days 21-30)
-  if (day >= 21) {
+  if (ramadanDay >= 21) {
     if (isOddDay && isNight) {
       return { mult: 1.5, label: 'Qadr kechasi ehtimoli', icon: '✨', id: 'qadr_night' };
     }
@@ -65,11 +78,11 @@ export function getRamadanSeasonBonus() {
   }
 
   // Mag'fira kunlari (days 11-20)
-  if (day >= 11) {
+  if (ramadanDay >= 11) {
     return { mult: 1.1, label: "Mag'fira kunlari", icon: '🤲', id: 'maghfira' };
   }
 
-  // Rahma kunlari (days 1-10) — no bonus, baseline
+  // Rahma kunlari (days 1-10)
   return { mult: 1.0, label: 'Rahma kunlari', icon: '🌱', id: 'rahma' };
 }
 

@@ -267,8 +267,6 @@ export default function Dashboard() {
     // ── Baraka (10% random crit, +50% of base)
     const barakaXP = rollBaraka(baseXP);
 
-    const heartAdded = 3;
-
     const newTodayDone = [...todayDone, challengeId];
     const newCompleted = {
       ...(user?.completedDays || {}),
@@ -291,7 +289,6 @@ export default function Dashboard() {
 
     const totalXpAdded = taskXP + weeklyBonusXP + comebackBonusXP + barakaXP + questBonusXP + perfectDayXP;
     const newXP = (user?.xp || 0) + totalXpAdded;
-    const newHeart = Math.min((user?.heartPercent || 0) + heartAdded, 100);
 
     const oldLevel = getLevelInfo(user?.xp || 0).current.level;
     const newLevel = getLevelInfo(newXP).current.level;
@@ -299,7 +296,6 @@ export default function Dashboard() {
 
     updateUser({
       xp: newXP,
-      heartPercent: newHeart,
       completedDays: newCompleted,
       comboCount,
       lastTaskAt: nowTs,
@@ -338,7 +334,6 @@ export default function Dashboard() {
       challengeId,
       title: challenge?.title || '',
       xpAdded: totalXpAdded,
-      heartAdded,
       baseXP,
       streakLabel,
       timeLabel: timeBonus.label,
@@ -378,7 +373,6 @@ export default function Dashboard() {
 
     updateUser({
       xp: Math.max(0, (user?.xp || 0) - undoItem.xpAdded),
-      heartPercent: Math.max(0, (user?.heartPercent || 0) - undoItem.heartAdded),
       completedDays: newCompleted,
       dailyQuestBonusDates: nextQuestBonusDates,
       comboCount: Math.max(1, (user?.comboCount || 1) - 1),

@@ -78,20 +78,29 @@ function normalizeUserFields(user) {
   const globalSoundEnabled = next.soundEnabled !== false;
   const tasbehData = normalizeTasbehData(next.tasbehData, globalSoundEnabled);
 
+  // completedDays'dan to'g'ridan-to'g'ri hisoblash (manba haqiqati)
+  const completedDays = next.completedDays || {};
+  const totalTasksCompleted = Object.values(completedDays).reduce(
+    (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
+    0,
+  );
+  // heartPercent = har bir bajarilgan topshiriq uchun 3%, max 100%
+  const heartPercent = Math.min(totalTasksCompleted * 3, 100);
+
   return {
     ...next,
     schemaVersion: USER_SCHEMA_VERSION,
     xp: next.xp || 0,
-    heartPercent: next.heartPercent || 0,
+    heartPercent,
     activeChallenges: next.activeChallenges || [],
-    completedDays: next.completedDays || {},
+    completedDays,
     streak: next.streak || 0,
     longestStreak: next.longestStreak || 0,
     dailyGoal: next.dailyGoal || 3,
     soundEnabled: next.soundEnabled !== false,
     achievements: next.achievements || [],
     streakFreezes: next.streakFreezes || 0,
-    totalTasksCompleted: next.totalTasksCompleted || 0,
+    totalTasksCompleted,
     dailyQuestBonusDates: next.dailyQuestBonusDates || {},
     comboCount: next.comboCount || 1,
     lastTaskAt: next.lastTaskAt || 0,
@@ -302,7 +311,6 @@ export function AuthProvider({ children }) {
         email: apiUser.email,
         city: apiUser.city,
         xp: apiUser.xp || 50,
-        heartPercent: 0,
         activeChallenges: [],
         completedDays: {},
         streak: 0,
@@ -367,9 +375,8 @@ export function AuthProvider({ children }) {
       else delete base._freezeAwarded;
     }
 
-    if (updates._taskCompleted) {
-      base.totalTasksCompleted = (base.totalTasksCompleted || 0) + 1;
-    }
+    // totalTasksCompleted va heartPercent normalizeUserFields ichida
+    // completedDays'dan avtomatik hisoblanadi — bu yerda qo'lda o'zgartirish kerak emas
 
     const oldLevel = getLevelInfo(user.xp || 0).current.level;
     const incomingLevel = getLevelInfo(base.xp || 0).current.level;

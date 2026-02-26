@@ -71,7 +71,6 @@ export default function Profile() {
 
     updateUser({
       xp: 0,
-      heartPercent: 0,
       activeChallenges: [],
       completedDays: {},
       streak: 0,
