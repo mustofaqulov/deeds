@@ -9,6 +9,7 @@ import {
   apiCompleteDay, apiUndoDay,
   apiAddChallenge, apiDeleteChallengeByFid,
   apiSyncAchievements, apiSyncPrayerDay,
+  apiSyncUserData,
   setTokens, clearTokens, getToken,
 } from '../lib/api';
 
@@ -187,16 +188,28 @@ export function AuthProvider({ children }) {
       const todayDone = hasDoneInDay(completedDays, todayKey);
       const streak = todayDone ? streakInfo.streak + 1 : streakInfo.streak;
 
+      const p = fullData.profile;
+
+      // Video data: API bo'sh bo'lmasa, local bilan birlashtirish
+      const videoNotes    = p.video_notes    && Object.keys(p.video_notes).length    > 0 ? { ...p.video_notes,    ...(user.videoNotes    || {}) } : user.videoNotes    || {};
+      const videoProgress = p.video_progress && Object.keys(p.video_progress).length > 0 ? { ...p.video_progress, ...(user.videoProgress || {}) } : user.videoProgress || {};
+      const watchedVideos = p.watched_videos && Object.keys(p.watched_videos).length > 0 ? { ...p.watched_videos, ...(user.watchedVideos || {}) } : user.watchedVideos || {};
+
       persist({
         ...user,
-        xp:            Math.max(user.xp || 0, fullData.profile.xp ?? 0),
+        xp:            Math.max(user.xp || 0, p.xp ?? 0),
         streak,
         longestStreak: Math.max(user.longestStreak || 0, streak),
         streakFreezes: streakInfo.freezesLeft,
         completedDays,
         activeChallenges,
         achievements,
-        prayerLog: { ...(user.prayerLog || {}), ...prayerLog },
+        prayerLog:    { ...(user.prayerLog  || {}), ...prayerLog },
+        videoNotes,
+        videoProgress,
+        watchedVideos,
+        ...(p.prayer_debt  ? { prayerDebt:  p.prayer_debt  } : {}),
+        ...(p.tasbeh_data  && Object.keys(p.tasbeh_data).length > 0 ? { tasbehData: p.tasbeh_data } : {}),
       });
     }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -214,6 +227,11 @@ export function AuthProvider({ children }) {
       let activeChallenges = localUser.activeChallenges || [];
       let achievements     = localUser.achievements     || [];
       let prayerLog        = localUser.prayerLog        || {};
+      let videoNotes       = localUser.videoNotes       || {};
+      let videoProgress    = localUser.videoProgress    || {};
+      let watchedVideos    = localUser.watchedVideos    || {};
+      let prayerDebt       = localUser.prayerDebt       || {};
+      let tasbehData       = localUser.tasbehData       || {};
       let apiXP            = apiUser.xp || 0;
 
       try {
@@ -257,6 +275,14 @@ export function AuthProvider({ children }) {
 
         // API dagi XP ni ishlatish (client hisoblagan bilan max)
         apiXP = fullData.profile?.xp ?? apiXP;
+
+        // Video, prayer debt, tasbeh — API ustunlik qiladi, local bilan birlashtirish
+        const fp = fullData.profile || {};
+        if (fp.video_notes    && Object.keys(fp.video_notes).length    > 0) videoNotes    = { ...fp.video_notes,    ...videoNotes    };
+        if (fp.video_progress && Object.keys(fp.video_progress).length > 0) videoProgress = { ...fp.video_progress, ...videoProgress };
+        if (fp.watched_videos && Object.keys(fp.watched_videos).length > 0) watchedVideos = { ...fp.watched_videos, ...watchedVideos };
+        if (fp.prayer_debt) prayerDebt = fp.prayer_debt;
+        if (fp.tasbeh_data && Object.keys(fp.tasbeh_data).length > 0) tasbehData = fp.tasbeh_data;
       } catch {
         // API dan yuklab bo'lmasa — localStorage dan davom et
       }
@@ -272,6 +298,11 @@ export function AuthProvider({ children }) {
         activeChallenges,
         achievements,
         prayerLog,
+        videoNotes,
+        videoProgress,
+        watchedVideos,
+        prayerDebt,
+        tasbehData,
       });
 
       const todayKey = getDateKey();
@@ -512,6 +543,29 @@ export function AuthProvider({ children }) {
           xp_reward: getAchievementXP([id]),
         }));
         apiSyncAchievements(rows);
+      }
+
+      // 8. Video notes / progress / watched sync
+      if (
+        updates.videoNotes    !== undefined ||
+        updates.videoProgress !== undefined ||
+        updates.watchedVideos !== undefined
+      ) {
+        apiSyncUserData({
+          video_notes:    base.videoNotes    || {},
+          video_progress: base.videoProgress || {},
+          watched_videos: base.watchedVideos || {},
+        });
+      }
+
+      // 9. Prayer debt (qazo daftari) sync
+      if (updates.prayerDebt !== undefined) {
+        apiSyncUserData({ prayer_debt: base.prayerDebt || {} });
+      }
+
+      // 10. Tasbeh data full sync
+      if (updates.tasbehData !== undefined) {
+        apiSyncUserData({ tasbeh_data: base.tasbehData || {} });
       }
     }
   };

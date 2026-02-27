@@ -109,6 +109,10 @@ export const apiGetCalendar = () => req('/api/calendar');
 export const apiSaveNafsStage = (stageId) =>
   req('/api/nafs/assess', { method: 'POST', body: { stage_id: stageId } }).catch(() => {});
 
+// --- User data (video notes, prayer debt, tasbeh) ---
+export const apiSyncUserData = (data) =>
+  req('/api/userdata', { method: 'PUT', body: data }).catch(() => {});
+
 // --- Prayer ---
 export const apiGetPrayer = (date) => req(`/api/prayer/${date}`);
 // Butun kunni sync qilish (bulk)
