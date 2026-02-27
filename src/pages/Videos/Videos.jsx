@@ -193,7 +193,7 @@ export default function Videos() {
       if (playerRef.current) { playerRef.current.destroy(); playerRef.current = null; }
       playerRef.current = new window.YT.Player('yt-player', {
         videoId: activeVideoYoutubeId,
-        playerVars: { autoplay: 1, rel: 0, modestbranding: 1, hl: 'uz' },
+        playerVars: { autoplay: 0, rel: 0, modestbranding: 1, hl: 'uz' },
         events: {
           onStateChange: (e) => {
             // 2 = pauza, 0 = tugadi

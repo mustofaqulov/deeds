@@ -190,3 +190,10 @@ select.input-field {
 @media (max-width: 480px) {
   .auth-card { padding: 28px 20px; border-radius: 20px; }
 }
+
+@media (max-width: 375px) {
+  .auth-card { padding: 22px 14px; border-radius: 16px; }
+  .auth-header h1 { font-size: 24px; }
+  .welcome-card { padding: 40px 20px; }
+  .welcome-moon { font-size: 56px; }
+}

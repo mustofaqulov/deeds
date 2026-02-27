@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { apiSaveNafsStage } from '../../lib/api';
+import { apiGetUlamaAdvice, apiSaveNafsStage } from '../../lib/api';
 import {
   IconBarChart,
   IconBolt,
@@ -674,6 +674,7 @@ export default function NafsJourney() {
   const [sosCheckedSteps, setSosCheckedSteps] = useState([]);
   const [sosTimer, setSosTimer] = useState(SOS_TIMER_SECONDS);
   const [sosRunning, setSosRunning] = useState(false);
+  const [ulamaAdviceList, setUlamaAdviceList] = useState(() => ULAMA_NASIHA);
   const badgeAwardLockRef = useRef('');
   const xpEventIdRef = useRef(0);
 
@@ -1014,6 +1015,27 @@ export default function NafsJourney() {
     const timeoutId = window.setTimeout(() => setXpToast(null), 2200);
     return () => window.clearTimeout(timeoutId);
   }, [xpToast]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiGetUlamaAdvice()
+      .then((items) => {
+        if (cancelled) return;
+        if (Array.isArray(items) && items.length > 0) {
+          setUlamaAdviceList(items);
+          return;
+        }
+        setUlamaAdviceList(ULAMA_NASIHA);
+      })
+      .catch(() => {
+        if (!cancelled) setUlamaAdviceList(ULAMA_NASIHA);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isAnyModalOpen = Boolean(noteModalStageId || reviewModalOpen);
 
@@ -1825,17 +1847,21 @@ export default function NafsJourney() {
           </div>
 
           <div className="nafs-ulama-list">
-            {ULAMA_NASIHA.map((item) => (
-              <article key={item.id} className="nafs-ulama-item">
-                <div className="nafs-ulama-head">
-                  <strong>{item.scholar}</strong>
-                  <span>{item.work}</span>
-                </div>
-                <p>{item.advice}</p>
-                <p className="nafs-ulama-action"><strong>Amaliy qadam:</strong> {item.action}</p>
-                <a href={item.source} target="_blank" rel="noreferrer">Manbani ko'rish</a>
-              </article>
-            ))}
+            {ulamaAdviceList.length > 0 ? (
+              ulamaAdviceList.map((item) => (
+                <article key={item.id} className="nafs-ulama-item">
+                  <div className="nafs-ulama-head">
+                    <strong>{item.scholar}</strong>
+                    <span className="nafs-ulama-work">{item.work}</span>
+                  </div>
+                  <p className="nafs-ulama-advice">{item.advice}</p>
+                  <p className="nafs-ulama-action"><strong>Amaliy qadam:</strong> {item.action}</p>
+                  <a className="nafs-ulama-source" href={item.source} target="_blank" rel="noreferrer">Manbani ko'rish</a>
+                </article>
+              ))
+            ) : (
+              <p className="nafs-review-empty">Hozircha ulamolar nasihati qo'shilmagan.</p>
+            )}
           </div>
         </article>
 

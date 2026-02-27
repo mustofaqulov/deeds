@@ -133,3 +133,33 @@
   color: var(--text-secondary);
   line-height: 1.6;
 }
+
+@media (max-width: 480px) {
+  .qibla-compass {
+    width: 210px;
+    height: 210px;
+  }
+  .qibla-compass-wrap,
+  .qibla-info,
+  .qibla-location,
+  .qibla-hint {
+    max-width: 100%;
+  }
+  .qibla-start {
+    padding: 28px 16px;
+  }
+  .qibla-kaaba { font-size: 56px; }
+  .arrow-body { height: 160px; }
+  .arrow-tip { font-size: 22px; }
+  .arrow-line { height: 62px; }
+  .qi-val { font-size: 18px; }
+}
+
+@media (max-width: 360px) {
+  .qibla-compass {
+    width: 180px;
+    height: 180px;
+  }
+  .arrow-body { height: 136px; }
+  .arrow-line { height: 52px; }
+}

@@ -2,6 +2,15 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'https://deeds-backend.vercel.a
 
 const ACCESS_KEY = 'rd_token';
 const REFRESH_KEY = 'rd_refresh';
+const API_BASE_KEY = 'ramadan_api_base';
+
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.setItem(API_BASE_KEY, BASE_URL);
+  } catch {
+    // ignore storage errors
+  }
+}
 
 export const getToken    = () => localStorage.getItem(ACCESS_KEY);
 export const getRefresh  = () => localStorage.getItem(REFRESH_KEY);
@@ -108,6 +117,12 @@ export const apiGetCalendar = () => req('/api/calendar');
 // --- Nafs ---
 export const apiSaveNafsStage = (stageId) =>
   req('/api/nafs/assess', { method: 'POST', body: { stage_id: stageId } }).catch(() => {});
+
+export const apiGetUlamaAdvice = () =>
+  req('/api/nafs/ulama');
+
+export const apiSaveUlamaAdvice = (items) =>
+  req('/api/nafs/ulama', { method: 'PUT', body: { items } });
 
 // --- User data (video notes, prayer debt, tasbeh) ---
 export const apiSyncUserData = (data) =>

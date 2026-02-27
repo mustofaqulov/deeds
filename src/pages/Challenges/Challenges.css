@@ -148,6 +148,32 @@
   margin-top: 8px;
 }
 
+@media (max-width: 768px) {
+  .modal-box {
+    padding: 20px;
+    border-radius: 20px;
+  }
+  .ch-active-item { padding: 14px; }
+}
+
 @media (max-width: 560px) {
   .ch-preset-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .modal-box { padding: 16px; }
+  .modal-actions {
+    flex-direction: column;
+  }
+  .modal-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .icon-opt {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+  .ch-custom-card { min-height: 120px; }
 }

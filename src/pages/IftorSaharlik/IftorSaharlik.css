@@ -375,3 +375,15 @@
     padding: 8px 6px;
   }
 }
+
+@media (max-width: 375px) {
+  .iftor-count-item {
+    min-width: 48px;
+    padding: 6px 4px;
+  }
+  .iftor-count-item strong { font-size: 18px; }
+  .iftor-count-sep { font-size: 16px; padding-bottom: 8px; }
+  .iftor-hero { padding: 12px; }
+  .iftor-main { padding: 12px; }
+  .iftor-city-select { min-width: 0; }
+}

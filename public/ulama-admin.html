@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ulamolar Nasihati Admin</title>
+    <link rel="stylesheet" href="/ulama-admin.css" />
+</head>
+
+<body>
+    <main class="admin-wrap">
+        <header class="admin-head">
+            <div>
+                <h1>Ulamolar Nasihati Admin</h1>
+                <p>Nafs sahifasidagi nasihat cardlarini shu yerda boshqaring.</p>
+                <p class="head-note">Bu sahifa backend bilan ishlaydi. Avval ilovada login qilingan bo'lishi kerak.</p>
+            </div>
+            <a class="btn ghost" href="/nafs">Nafs sahifasiga o'tish</a>
+        </header>
+
+        <div id="status" class="status" aria-live="polite"></div>
+
+        <section class="panel form-panel">
+            <h2 id="form-title">Yangi nasihat qo'shish</h2>
+            <form id="advice-form" class="form-grid">
+                <label>
+                    Olim nomi
+                    <input id="scholar" type="text" required />
+                </label>
+                <label>
+                    Asar/manba
+                    <input id="work" type="text" required />
+                </label>
+                <label class="full">
+                    Nasihat matni
+                    <textarea id="advice" rows="3" required></textarea>
+                </label>
+                <label class="full">
+                    Amaliy qadam
+                    <textarea id="action" rows="3" required></textarea>
+                </label>
+                <label class="full">
+                    Manba havola
+                    <input id="source" type="url" placeholder="https://..." required />
+                </label>
+                <div class="form-actions full">
+                    <button type="submit" class="btn primary" id="save-btn">Saqlash</button>
+                    <button type="button" class="btn" id="cancel-edit" hidden>Bekor qilish</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel">
+            <div class="panel-head">
+                <h2>Nasihatlar ro'yxati</h2>
+                <span class="count" id="count">0 ta</span>
+            </div>
+
+            <div class="tools">
+                <button class="btn" id="load-defaults">Standartni yuklash</button>
+                <button class="btn" id="export-json">JSON yuklab olish</button>
+                <button class="btn" id="import-json-trigger">JSON import</button>
+                <input type="file" id="import-json" accept="application/json" hidden />
+                <button class="btn danger" id="clear-all">Hammasini tozalash</button>
+            </div>
+
+            <div id="list" class="list"></div>
+        </section>
+    </main>
+
+    <template id="item-template">
+        <article class="item">
+            <div class="item-head">
+                <strong data-field="scholar"></strong>
+                <span data-field="work"></span>
+            </div>
+            <p data-field="advice"></p>
+            <p class="action"><strong>Amaliy qadam:</strong> <span data-field="action"></span></p>
+            <a data-field="source" target="_blank" rel="noreferrer noopener">Manba</a>
+            <div class="item-actions">
+                <button class="btn small" data-action="edit">Tahrirlash</button>
+                <button class="btn small danger" data-action="delete">O'chirish</button>
+            </div>
+        </article>
+    </template>
+
+    <script src="/ulama-admin.js" defer></script>
+</body>
+
+</html>

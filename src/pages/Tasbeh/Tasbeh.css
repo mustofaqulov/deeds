@@ -470,3 +470,12 @@
     width: 14px;
   }
 }
+
+@media (max-width: 480px) {
+  .tasbeh-ring-btn { width: min(100%, 260px); }
+  .tasbeh-stat strong { font-size: 22px; }
+  .tasbeh-stat { padding: 10px; }
+  .tasbeh-counter-card { padding: 16px 12px; }
+  .tasbeh-actions { gap: 8px; }
+  .tasbeh-hero { padding: 12px; }
+}

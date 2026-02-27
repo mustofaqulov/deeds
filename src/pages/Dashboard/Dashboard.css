@@ -1126,3 +1126,15 @@
 
   .empty-challenges { padding: 32px 20px; }
 }
+
+@media (max-width: 480px) {
+  .dash-greeting { padding: 18px 14px; }
+  .dash-greeting h1 { font-size: 22px; }
+  .ramadan-day,
+  .ramadan-countdown { font-size: 14px; }
+  .dash-section .card { padding: 18px 14px; }
+  .challenge-item { padding: 12px 14px; }
+  .dash-heart-card { padding: 26px 16px; }
+  .empty-challenges { padding: 28px 16px; }
+  .empty-challenges p { font-size: 15px; }
+}
