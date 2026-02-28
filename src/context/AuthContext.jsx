@@ -68,6 +68,7 @@ function migrateUserSchema(user) {
     migrated.prayerDebt = migrated.prayerDebt || {};
     migrated.prayerMode = migrated.prayerMode || 'standard';
     migrated.tasbehData = migrated.tasbehData || {};
+    migrated.appState = migrated.appState || {};
   }
   migrated.schemaVersion = USER_SCHEMA_VERSION;
   return migrated;
@@ -113,6 +114,9 @@ function normalizeUserFields(user) {
     prayerDebt: next.prayerDebt || {},
     prayerMode: next.prayerMode || 'standard',
     tasbehData,
+    appState: (next.appState && typeof next.appState === 'object' && !Array.isArray(next.appState))
+      ? next.appState
+      : {},
   };
 }
 
@@ -189,6 +193,9 @@ export function AuthProvider({ children }) {
       const streak = todayDone ? streakInfo.streak + 1 : streakInfo.streak;
 
       const p = fullData.profile;
+      const profileAppState = (p?.app_state && typeof p.app_state === 'object' && !Array.isArray(p.app_state))
+        ? p.app_state
+        : {};
 
       // Video data: API bo'sh bo'lmasa, local bilan birlashtirish
       const videoNotes    = p.video_notes    && Object.keys(p.video_notes).length    > 0 ? { ...p.video_notes,    ...(user.videoNotes    || {}) } : user.videoNotes    || {};
@@ -208,6 +215,7 @@ export function AuthProvider({ children }) {
         videoNotes,
         videoProgress,
         watchedVideos,
+        appState: { ...(user.appState || {}), ...profileAppState },
         ...(p.prayer_debt  ? { prayerDebt:  p.prayer_debt  } : {}),
         ...(p.tasbeh_data  && Object.keys(p.tasbeh_data).length > 0 ? { tasbehData: p.tasbeh_data } : {}),
       });
@@ -232,6 +240,7 @@ export function AuthProvider({ children }) {
       let watchedVideos    = localUser.watchedVideos    || {};
       let prayerDebt       = localUser.prayerDebt       || {};
       let tasbehData       = localUser.tasbehData       || {};
+      let appState         = localUser.appState         || {};
       let apiXP            = apiUser.xp || 0;
 
       try {
@@ -283,6 +292,9 @@ export function AuthProvider({ children }) {
         if (fp.watched_videos && Object.keys(fp.watched_videos).length > 0) watchedVideos = { ...fp.watched_videos, ...watchedVideos };
         if (fp.prayer_debt) prayerDebt = fp.prayer_debt;
         if (fp.tasbeh_data && Object.keys(fp.tasbeh_data).length > 0) tasbehData = fp.tasbeh_data;
+        if (fp.app_state && typeof fp.app_state === 'object' && !Array.isArray(fp.app_state)) {
+          appState = { ...fp.app_state, ...appState };
+        }
       } catch {
         // API dan yuklab bo'lmasa — localStorage dan davom et
       }
@@ -303,6 +315,7 @@ export function AuthProvider({ children }) {
         watchedVideos,
         prayerDebt,
         tasbehData,
+        appState,
       });
 
       const todayKey = getDateKey();
@@ -356,6 +369,7 @@ export function AuthProvider({ children }) {
         dailyQuestBonusDates: {},
         comboCount: 1,
         lastTaskAt: 0,
+        appState: {},
       });
 
       const stored = JSON.parse(localStorage.getItem('ramadan_users') || '[]');
@@ -472,10 +486,11 @@ export function AuthProvider({ children }) {
     // Fire-and-forget API sync
     if (getToken()) {
       // 1. Profile (xp, streak, name, city)
-      if (updates.xp !== undefined || updates.name || updates.city || updates.completedDays) {
+      if (updates.xp !== undefined || updates.name || updates.city || updates.completedDays || updates.appState !== undefined) {
         const syncData = { xp: base.xp, streak: base.streak };
         if (updates.name) syncData.name = base.name;
         if (updates.city) syncData.city = base.city;
+        if (updates.appState !== undefined) syncData.app_state = base.appState || {};
         apiSyncProfile(syncData);
       }
 

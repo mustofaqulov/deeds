@@ -282,6 +282,63 @@ export const NAFS_ARTICLE_LIBRARY = [
     ],
     sourceLabel: "Ihyo' Ulum ad-Din, XXII-XXIII boblar",
   },
+  {
+    id: 'article-ghazali-four-paths',
+    title: "Nafs ayblarini bilishning 4 yo'li",
+    publisher: "Ihyo' Ulum ad-Din",
+    tag: "Lavvoma amaliyoti",
+    stageIds: [2, 3],
+    summaryUz: "Imom G'azzoliy nafsni tanish uchun 4 yo'lni beradi: murshid, sodiq do'st, dushman tanqidi va odamlar orasida o'zini kuzatish.",
+    paragraphsUz: [
+      "Birinchi yo'l: nafs ayblaridan ogoh murshid topish. Ustoz qalb holatini ko'rib, nafsni qayerda ushlash kerakligini ko'rsatadi.",
+      "Ikkinchi yo'l: sodiq va diyonatli do'st tanlash. Haqiqiy do'st maqtamaydi, balki nozik nuqsonni ham adab bilan aytadi.",
+      "Uchinchi va to'rtinchi yo'l: tanqidni foydaga burish va odamlar orasida yurib o'z odatlarini kuzatish. Nafs odatda o'zini oqlaydi; muhasaba esa uni fosh qiladi.",
+    ],
+    actionPlan: [
+      "Haftasiga 1 marta yaqin insondan aniq feedback so'rang.",
+      "Eshitgan tanbehni himoyasiz qabul qilib, 1 amaliy tuzatish yozing.",
+      "Kun oxirida 3 daqiqalik muhasaba bilan o'sha tuzatishni tekshiring.",
+    ],
+    sourceLabel: "Abu Homid G'azzoliy, Ihyo', 351-353-betlar",
+  },
+  {
+    id: 'article-salman-feedback-adab',
+    title: "Salmon Forsiy: aybni so'rash odobi",
+    publisher: "Ihyo' Ulum ad-Din",
+    tag: "Nafs hisobi",
+    stageIds: [2],
+    summaryUz: "Ulug'lar o'z aybini yashirmagan: ular yaqinlaridan ochiq so'ragan va aytgan kishidan ranjimagan.",
+    paragraphsUz: [
+      "Matnda Salman Forsiy roziyallohu anhu odati zikr qilinadi: kishi o'z aybini bilish uchun uni boshqalardan so'rab turadi.",
+      "Muammo odatda tanbehda emas, nafsning himoya reaksiyasida bo'ladi. Biz ko'pincha foydali ogohlantirishga ham xafa bo'lib javob beramiz.",
+      "Qalb tarbiyasi uchun mezon: kim aybni ko'rsatsa, unga minnatdorlik bilan qarash. Nafsni oqlash emas, uni isloh qilish maqsad bo'lishi kerak.",
+    ],
+    actionPlan: [
+      "Bugun 1 insonga: 'Menda tuzatish kerak bo'lgan odat qaysi?' deb so'rang.",
+      "Javob paytida o'zingizni oqlamaslik qoidasini qo'ying.",
+      "Ertasi kun o'sha nuqta bo'yicha kichik qarshi-amal qiling.",
+    ],
+    sourceLabel: "Abu Homid G'azzoliy, Ihyo', 352-bet",
+  },
+  {
+    id: 'article-nafs-tanbeh-odat',
+    title: "Nafsni tergash odatini shakllantirish",
+    publisher: "Ihyo' Ulum ad-Din",
+    tag: "Amaliy intizom",
+    stageIds: [2, 4],
+    summaryUz: "Nafsni poklash bir martalik qaror emas: yomon odatni ko'rish, tanbeh bilan qaytarish va tark qilishni odatga aylantirish kerak.",
+    paragraphsUz: [
+      "Matnda ta'kid bor: nafsni doimiy tergashga o'rganmagan odam xatoni oddiy hol deb qabul qilib qoladi.",
+      "Yomon deb topilgan odatlarni tark qilish - ichki ozodlikning boshlanishi. Nafsga har safar yo'l berish esa qalbni og'irlashtiradi.",
+      "Tanbehning foydasi shunda: u insonni hushyor qiladi va nafsning oqlovchi tilini sindiradi.",
+    ],
+    actionPlan: [
+      "Bir haftaga bitta yomon odat tanlang va uni 'taqiqlangan amal' deb belgilang.",
+      "Shu odat qo'zg'alganda darhol almashtiruvchi amal qiling (zikr, sukut yoki joyni tark etish).",
+      "Hafta oxirida necha marta o'zingizni qaytarganingizni yozib baholang.",
+    ],
+    sourceLabel: "Abu Homid G'azzoliy, Ihyo', 353-bet",
+  },
 ];
 
 export const ANGER_SOS_STEPS = [

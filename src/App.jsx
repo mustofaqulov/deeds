@@ -16,7 +16,6 @@ import QuranHadith from './pages/QuranHadith/QuranHadith';
 import QuranHifz from './pages/QuranHifz/QuranHifz';
 import Profile from './pages/Profile/Profile';
 import Tasbeh from './pages/Tasbeh/Tasbeh';
-import Qibla from './pages/Qibla/Qibla';
 import Videos from './pages/Videos/Videos';
 import NafsJourney from './pages/NafsJourney/NafsJourney';
 import { getLevelInfo } from './utils/helpers';
@@ -175,14 +174,6 @@ function AppRoutes() {
           element={(
             <ProtectedRoute>
               <Tasbeh />
-            </ProtectedRoute>
-          )}
-        />
-        <Route
-          path="/qibla"
-          element={(
-            <ProtectedRoute>
-              <Qibla />
             </ProtectedRoute>
           )}
         />

@@ -544,7 +544,11 @@ export default function Videos() {
             <div className="videos-filters-head">
               <button
                 className={`vcat-btn ${activeCategory === 'all' ? 'active' : ''}`}
-                onClick={() => setActiveCategory('all')}
+                onClick={() => {
+                  setActiveCategory('all');
+                  setWatchFilter('all');
+                  setNotesOnly(false);
+                }}
               >
                 Barcha kategoriya
               </button>
@@ -558,7 +562,10 @@ export default function Videos() {
               <div className="videos-watch-filter">
                 <button
                   className={`vcat-btn ${watchFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setWatchFilter('all')}
+                  onClick={() => {
+                    setWatchFilter('all');
+                    setNotesOnly(false);
+                  }}
                 >
                   Hammasi
                 </button>
