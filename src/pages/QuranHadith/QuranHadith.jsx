@@ -92,14 +92,8 @@ export default function QuranHadith() {
   const [audioTime, setAudioTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [viewMode, setViewMode] = useState(() => persistedQuran.viewMode || 'comfortable');
+  const viewMode = persistedQuran.viewMode || 'comfortable';
   const [xpToast, setXpToast] = useState(null);
-
-  useEffect(() => {
-    if (persistedQuran.viewMode && persistedQuran.viewMode !== viewMode) {
-      setViewMode(persistedQuran.viewMode);
-    }
-  }, [persistedQuran.viewMode, viewMode]);
 
   useEffect(() => {
     if (!xpToast) return undefined;
@@ -478,7 +472,6 @@ export default function QuranHadith() {
   };
 
   const handleViewModeChange = (modeId) => {
-    setViewMode(modeId);
     commitQuranState((draft) => {
       draft.viewMode = modeId;
       return null;

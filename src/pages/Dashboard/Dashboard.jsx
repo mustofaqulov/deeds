@@ -133,6 +133,9 @@ export default function Dashboard() {
   const [comboHint, setComboHint] = useState(null);
   const [dismissedLevelKey, setDismissedLevelKey] = useState(null);
   const [dismissedAchKey, setDismissedAchKey] = useState(null);
+  const [challengeQuery, setChallengeQuery] = useState('');
+  const [challengeFilter, setChallengeFilter] = useState('all');
+  const [challengeSort, setChallengeSort] = useState('smart');
   const [qarshiPrayerTimes, setQarshiPrayerTimes] = useState(() => ({
     ...QARSHI_FALLBACK_TIMES,
     source: 'fallback',
@@ -144,9 +147,9 @@ export default function Dashboard() {
   const progressRef = useRef(null);
   const burstIdRef = useRef(0);
 
-  const activeChallenges = user?.activeChallenges || [];
   const today = new Date().toISOString().slice(0, 10);
-  const todayDone = user?.completedDays?.[today] || [];
+  const activeChallenges = useMemo(() => user?.activeChallenges || [], [user?.activeChallenges]);
+  const todayDone = useMemo(() => user?.completedDays?.[today] || [], [today, user?.completedDays]);
   const dailyGoal = user?.dailyGoal || 3;
   const goalPct = Math.min((todayDone.length / dailyGoal) * 100, 100);
   const quote = getDailyQuote();
@@ -195,6 +198,66 @@ export default function Dashboard() {
   const currentJumaBonus = getJumaBonus();
   const comboActive = user?.comboCount || 1;
   const levelInfo = getLevelInfo(user?.xp || 0).current;
+  const challengeSummary = useMemo(() => {
+    const total = activeChallenges.length;
+    const done = activeChallenges.filter((item) => todayDone.includes(item.id)).length;
+    const pending = total - done;
+    const pendingPotentialXp = activeChallenges.reduce((sum, item) => {
+      if (todayDone.includes(item.id)) return sum;
+      return sum + (Number(item?.xpPerTask) || 20);
+    }, 0);
+
+    return { total, done, pending, pendingPotentialXp };
+  }, [activeChallenges, todayDone]);
+
+  const visibleChallenges = useMemo(() => {
+    const query = challengeQuery.trim().toLowerCase();
+
+    const normalized = activeChallenges.map((item) => ({
+      ...item,
+      done: todayDone.includes(item.id),
+      xp: Number(item?.xpPerTask) || 20,
+      streak: Number(item?.challengeStreak) || 0,
+    }));
+
+    const byFilter = normalized.filter((item) => {
+      if (challengeFilter === 'pending') return !item.done;
+      if (challengeFilter === 'done') return item.done;
+      return true;
+    });
+
+    const byQuery = query
+      ? byFilter.filter((item) => {
+        const haystack = `${item?.title || ''} ${item?.description || ''} ${item?.category || ''}`.toLowerCase();
+        return haystack.includes(query);
+      })
+      : byFilter;
+
+    return [...byQuery].sort((a, b) => {
+      const titleA = a?.title || '';
+      const titleB = b?.title || '';
+      const titleCmp = titleA.localeCompare(titleB, 'uz', { sensitivity: 'base' });
+
+      if (challengeSort === 'xp') {
+        if (b.xp !== a.xp) return b.xp - a.xp;
+        if (a.done !== b.done) return Number(a.done) - Number(b.done);
+        return titleCmp;
+      }
+
+      if (challengeSort === 'streak') {
+        if (b.streak !== a.streak) return b.streak - a.streak;
+        if (a.done !== b.done) return Number(a.done) - Number(b.done);
+        return titleCmp;
+      }
+
+      if (challengeSort === 'title') return titleCmp;
+
+      if (a.done !== b.done) return Number(a.done) - Number(b.done);
+      if (b.streak !== a.streak) return b.streak - a.streak;
+      if (b.xp !== a.xp) return b.xp - a.xp;
+      return titleCmp;
+    });
+  }, [activeChallenges, challengeFilter, challengeQuery, challengeSort, todayDone]);
 
   const clearUndo = () => {
     clearTimeout(timerRef.current);
@@ -777,42 +840,114 @@ export default function Dashboard() {
           <div className="section-title-row">
             <span className="section-icon"><IconChallenge size={20} /></span>
             Faol topshiriqlar
+            <span className="badge badge-accent challenge-progress-badge">
+              {challengeSummary.done}/{challengeSummary.total}
+            </span>
           </div>
-          <div className="challenge-list">
-            {activeChallenges.map((ch) => {
-              const done = todayDone.includes(ch.id);
-              const chStreak = ch.challengeStreak || 0;
-              return (
-                <div key={ch.id} className={`challenge-item card ${done ? 'done' : ''}`}>
-                  <span className="ch-icon">{ch.icon}</span>
-                  <div className="ch-info">
-                    <div className="ch-title">{ch.title}</div>
-                    <div className="ch-meta-row">
-                      <span className="ch-freq">{ch.frequency}</span>
-                      <span className="badge badge-gold">+{ch.xpPerTask || 20} XP</span>
-                      {chStreak > 0 && (
-                        <span className="ch-streak">
-                          <IconFire size={12} /> {chStreak} kun
-                        </span>
-                      )}
+
+          <div className="challenge-tools card">
+            <div className="challenge-tools-top">
+              <div className="challenge-kpis">
+                <span className="challenge-kpi">Jami: {challengeSummary.total}</span>
+                <span className="challenge-kpi done">Bajarilgan: {challengeSummary.done}</span>
+                <span className="challenge-kpi pending">Qolgan: {challengeSummary.pending}</span>
+              </div>
+
+              <label className="challenge-sort-wrap" htmlFor="challenge-sort">
+                <span>Saralash</span>
+                <select
+                  id="challenge-sort"
+                  className="input-field challenge-sort-select"
+                  value={challengeSort}
+                  onChange={(event) => setChallengeSort(event.target.value)}
+                >
+                  <option value="smart">Aqlli</option>
+                  <option value="xp">XP yuqori</option>
+                  <option value="streak">Streak yuqori</option>
+                  <option value="title">Nom bo'yicha</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="challenge-search-row">
+              <input
+                className="input-field challenge-search"
+                type="text"
+                placeholder="Topshiriq qidirish..."
+                value={challengeQuery}
+                onChange={(event) => setChallengeQuery(event.target.value)}
+              />
+            </div>
+
+            <div className="challenge-filters">
+              <button
+                className={`ch-filter-btn ${challengeFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setChallengeFilter('all')}
+              >
+                Barchasi
+              </button>
+              <button
+                className={`ch-filter-btn ${challengeFilter === 'pending' ? 'active' : ''}`}
+                onClick={() => setChallengeFilter('pending')}
+              >
+                Qolgan
+              </button>
+              <button
+                className={`ch-filter-btn ${challengeFilter === 'done' ? 'active' : ''}`}
+                onClick={() => setChallengeFilter('done')}
+              >
+                Bajarilgan
+              </button>
+            </div>
+
+            {challengeSummary.pending > 0 && (
+              <div className="challenge-potential">
+                Bugun qolgan topshiriqlardan olish mumkin: +{challengeSummary.pendingPotentialXp} XP
+              </div>
+            )}
+          </div>
+
+          {visibleChallenges.length > 0 ? (
+            <div className="challenge-list">
+              {visibleChallenges.map((ch) => {
+                const done = ch.done;
+                const chStreak = ch.streak;
+                return (
+                  <div key={ch.id} className={`challenge-item card ${done ? 'done' : ''}`}>
+                    <span className="ch-icon">{ch.icon}</span>
+                    <div className="ch-info">
+                      <div className="ch-title">{ch.title}</div>
+                      <div className="ch-meta-row">
+                        <span className="ch-freq">{ch.frequency}</span>
+                        <span className="badge badge-gold">+{ch.xp} XP</span>
+                        {chStreak > 0 && (
+                          <span className="ch-streak">
+                            <IconFire size={12} /> {chStreak} kun
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <button
-                    className={`ch-btn ${done ? 'done' : 'btn btn-primary'}`}
-                    onClick={(event) => completeTask(ch.id, event)}
-                    disabled={done}
-                  >
-                    {done ? 'Bajarildi' : 'Bajarish'}
-                  </button>
-                  {done && undoItem?.challengeId === ch.id && (
-                    <button className="ch-undo-inline btn btn-ghost" onClick={undoTask}>
-                      Bekor
+                    <button
+                      className={`ch-btn ${done ? 'done' : 'btn btn-primary'}`}
+                      onClick={(event) => completeTask(ch.id, event)}
+                      disabled={done}
+                    >
+                      {done ? 'Bajarildi' : 'Bajarish'}
                     </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    {done && undoItem?.challengeId === ch.id && (
+                      <button className="ch-undo-inline btn btn-ghost" onClick={undoTask}>
+                        Bekor
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="challenge-empty-filter card">
+              Bu filter bo'yicha topshiriq topilmadi.
+            </div>
+          )}
         </div>
       )}
 
