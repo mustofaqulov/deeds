@@ -1,11 +1,11 @@
 export const LEVELS = [
   { level: 1, name: 'Murid',  minXP: 0,    icon: '🌱' },
-  { level: 2, name: 'Tolib',  minXP: 150,  icon: '📚' },
-  { level: 3, name: 'Solik',  minXP: 400,  icon: '🕌' },
-  { level: 4, name: 'Orif',   minXP: 900,  icon: '⭐' },
-  { level: 5, name: 'Abdol',  minXP: 1800, icon: '🌟' },
-  { level: 6, name: 'Vali',   minXP: 3500, icon: '✨' },
-  { level: 7, name: 'Qutb',   minXP: 6000, icon: '👑' },
+  { level: 2, name: 'Tolib',  minXP: 1500,  icon: '📚' },
+  { level: 3, name: 'Solik',  minXP: 4000,  icon: '🕌' },
+  { level: 4, name: 'Orif',   minXP: 9000,  icon: '⭐' },
+  { level: 5, name: 'Abdol',  minXP: 18000, icon: '🌟' },
+  { level: 6, name: 'Vali',   minXP: 35000, icon: '✨' },
+  { level: 7, name: 'Qutb',   minXP: 60000, icon: '👑' },
 ];
 
 export const PRESET_CHALLENGES = [
