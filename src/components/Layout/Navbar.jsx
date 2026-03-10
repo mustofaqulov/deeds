@@ -6,7 +6,7 @@ import { getProfilePhotoById } from '../../utils/profilePhotos';
 import {
   IconHome, IconCalendar, IconMoon, IconChallenge,
   IconQuran, IconMosque, IconVideo, IconTasbeh, IconProfile,
-  IconSun, IconHeart,
+  IconSun, IconHeart, IconLantern,
 } from '../Icons/RamadanIcons';
 import './Navbar.css';
 
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { to: '/quran-hifz', label: 'Hifz',         Icon: IconMosque },
   { to: '/videos',     label: 'Darsliklar',   Icon: IconVideo },
   { to: '/nafs',       label: 'Nafs',         Icon: IconHeart },
+  { to: '/last-ten',   label: '10 Kun',       Icon: IconLantern },
   { to: '/tasbeh',     label: 'Tasbeh',       Icon: IconTasbeh },
   { to: '/profile',    label: 'Profil',       Icon: IconProfile },
 ];

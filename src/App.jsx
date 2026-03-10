@@ -18,6 +18,9 @@ import Profile from './pages/Profile/Profile';
 import Tasbeh from './pages/Tasbeh/Tasbeh';
 import Videos from './pages/Videos/Videos';
 import NafsJourney from './pages/NafsJourney/NafsJourney';
+import LastTenDays from './pages/LastTenDays/LastTenDays';
+import Sunnatlar from './pages/Sunnatlar/Sunnatlar';
+import Hadislar from './pages/Hadislar/Hadislar';
 import { getLevelInfo } from './utils/helpers';
 import { ACHIEVEMENTS } from './utils/xpSystem';
 
@@ -166,6 +169,30 @@ function AppRoutes() {
           element={(
             <ProtectedRoute>
               <NafsJourney />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/last-ten"
+          element={(
+            <ProtectedRoute>
+              <LastTenDays />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/sunnatlar"
+          element={(
+            <ProtectedRoute>
+              <Sunnatlar />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/hadislar"
+          element={(
+            <ProtectedRoute>
+              <Hadislar />
             </ProtectedRoute>
           )}
         />
